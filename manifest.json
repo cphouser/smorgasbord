@@ -1,0 +1,25 @@
+{
+    //mandatory fields
+    "manifest_version": 2,
+    "name": "FirefOrg",
+    "version": "0.1",
+
+    "description": "File representation for Firefox windows and bookmarks",
+
+    "permissions": [
+        "webRequest",
+        "<all_urls>",
+        "tabs",
+        "nativeMessaging"
+    ],
+
+    "background": {
+        "scripts": ["tabstore.js"]
+    },
+
+    "applications": {
+        "gecko": {
+            "id": "tabstore@xeroxcat"
+        }
+    }
+}
