@@ -1,0 +1,32 @@
+
+html, body {
+    width: 100px;
+}
+
+.hidden {
+    display: none;
+}
+
+.button {
+    margin: 3% auto;
+    padding: 4px;
+    text-align: center;
+    font-size: 1.5em;
+    cursor: pointer;
+}
+
+.load:hover {
+    background-color: #CFF2F2;
+}
+
+.load {
+    background-color: #E5F2F2;
+}
+
+.save {
+    background-color: #E5F2F2;
+}
+
+.save:hover {
+    background-color: #FBFBC9;
+}

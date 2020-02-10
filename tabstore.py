@@ -3,29 +3,10 @@
 import os
 import sys
 import time
-import json
-import struct
 import operator
+import json
 
-def getMessage():
-    raw_message = sys.stdin.buffer.read(4)
-
-    if not raw_message:
-        sys.exit(0)
-
-    msg_length = struct.unpack('@I', raw_message)[0]
-    message = sys.stdin.buffer.read(msg_length).decode('utf-8')
-    return json.loads(message)
-
-def encodeMessage(messageContent):
-    encodedContent = json.dumps(messageContent).encode('utf-8')
-    encodedLength = struct.pack('@I', len(encodedContent))
-    return {'length': encodedLength, 'content': encodedContent}
-
-def sendMessage(encodedMessage):
-    sys.stdout.buffer.write(encodedMessage['length'])
-    sys.stdout.buffer.write(encodedMessage['content'])
-    sys.stdout.buffer.flush()
+import extutil
 
 exec_time = int(time.time())
 wait_secs = 10 + (exec_time % 10)
@@ -47,7 +28,7 @@ with open('tabstore.lock', 'x') as lockfile:
     lockfile.write("")
 
 
-msg_obj = json.loads(getMessage())
+msg_obj = json.loads(extutil.getMessage())
 window_obj = {}
 if os.access('windows.json', os.F_OK):
     with open('windows.json', 'r') as window_file:
@@ -83,7 +64,7 @@ if os.access('windows.json', os.F_OK):
             for i in range(MAX_WINDOWS):
                 w_name = 'window ' + str(i)
                 #with open('test.txt', 'w') as f:
-                #    f.write(str(os.getpid()) + str(window_obj.keys()) + w_name + '\n')
+
                 if w_name not in window_obj:
                     window_obj[w_name] = new_windows.pop()
                     break
@@ -100,4 +81,4 @@ with open('windows.json', 'w') as window_file:
 
 
 os.remove('tabstore.lock')
-sendMessage(encodeMessage('done'))
+extutil.sendMessage(extutil.encodeMessage('done'))

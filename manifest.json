@@ -13,13 +13,13 @@
         "nativeMessaging"
     ],
 
-    //"browser_action": {
-    //    "default_icon": {
-    //        "16": "icons/browseraction.png"
-    //    },
-    //    "default_title": "Sync Pages",
-    //    "default_popup": "html/browseraction.html",
-    //},
+    "browser_action": {
+        "default_icon": {
+            "16": "icons/browseraction.png"
+        },
+        "default_title": "Sync Pages",
+        "default_popup": "html/browseraction.html"
+    },
 
     "background": {
         "scripts": ["tabstore.js"]
