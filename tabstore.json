@@ -1,7 +1,7 @@
 {
     "name": "tabstore",
     "description": "Saves tabs to an externally viewable JSON file",
-    "path": "/home/xeroxcat/Dropbox/FirefOrg/tabstore.py",
+    "path": "/home/xeroxcat/Dropbox/smorgasbord/tabstore.py",
     "type": "stdio",
-    "allowed_extensions": [ "tabstore@xeroxcat" ]
+    "allowed_extensions": [ "smorgasbord@xeroxcat" ]
 }

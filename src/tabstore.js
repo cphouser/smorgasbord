@@ -22,7 +22,9 @@ function storeTabs(tabs) {
         //console.log(tab.windowId);
         //console.log(tab.title);
     }
-    var varb = browser.runtime.sendNativeMessage("tabstore", JSON.stringify(win_obj));
+    var varb = browser.runtime.sendNativeMessage(
+        "tabstore", JSON.stringify(win_obj)
+    );
 }
 
 function tabRemove(tabId, info) {
@@ -30,6 +32,24 @@ function tabRemove(tabId, info) {
         pageChange();
     }
 };
+
+function handleStartup() {
+    //check for value of startup preference
+    initItem = browser.storage.local.get("startup");
+    initItem.then(startupPref, noStartupPref);
+}
+
+function startupPref(preference) {
+    console.log(preference);
+    //switch statement(preference)
+}
+
+function noStartupPref(error) {
+    browser.browserAction.setTitle("Load Windows");
+    browser.browserAction.setBadgeBackgroundColor({'color': 'blue'});
+}
+
+browser.runtime.onStartup.addListener(handleStartup);
 
 browser.webRequest.onCompleted.addListener(
     pageChange,

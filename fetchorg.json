@@ -1,7 +1,7 @@
 {
     "name": "fetchorg",
     "description": "Loads windows from an external org file.",
-    "path": "/home/xeroxcat/Dropbox/FirefOrg/fetchorg.py",
+    "path": "/home/xeroxcat/Dropbox/smorgasbord/fetchorg.py",
     "type": "stdio",
-    "allowed_extensions": [ "tabstore@xeroxcat" ]
+    "allowed_extensions": [ "smorgasbord@xeroxcat" ]
 }

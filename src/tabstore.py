@@ -15,8 +15,8 @@ MAX_WINDOWS = 100
 
 while os.access('tabstore.lock', os.F_OK):
     locktime = os.stat('tabstore.lock').st_mtime
-    #just delete lock if older than 5 minutes
-    if locktime + 5*60 < exec_time:
+    #just delete lock if older than 1 minute
+    if locktime + 60 < exec_time:
         os.remove('tabstore.lock')
         break
     elif locktime > exec_time:
@@ -61,7 +61,7 @@ if os.access('windows.json', os.F_OK):
                 window_obj[match_name] = msg_obj[win_idx]
 
         while new_windows:
-            for i in range(MAX_WINDOWS):
+            for i in range(1, MAX_WINDOWS):
                 w_name = 'window ' + str(i)
                 #with open('test.txt', 'w') as f:
 
