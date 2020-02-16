@@ -12,26 +12,29 @@ exec_time = int(time.time())
 wait_secs = 10 + (exec_time % 10)
 locktime = 0
 MAX_WINDOWS = 100
+DATA_PATH = '../data/'
+LOCKFILE = os.path.join(DATA_PATH, 'windows.lock')
+WINDOWFILE = os.path.join(DATA_PATH, 'windows.json')
 
-while os.access('tabstore.lock', os.F_OK):
-    locktime = os.stat('tabstore.lock').st_mtime
+while os.access(LOCKFILE, os.F_OK):
+    locktime = os.stat(LOCKFILE).st_mtime
     #just delete lock if older than 1 minute
     if locktime + 60 < exec_time:
-        os.remove('tabstore.lock')
+        os.remove(LOCKFILE)
         break
     elif locktime > exec_time:
         sys.exit(0)
     else:
         time.sleep(wait_secs)
 
-with open('tabstore.lock', 'x') as lockfile:
+with open(LOCKFILE, 'x') as lockfile:
     lockfile.write("")
 
 
 msg_obj = json.loads(extutil.getMessage())
 window_obj = {}
-if os.access('windows.json', os.F_OK):
-    with open('windows.json', 'r') as window_file:
+if os.access(WINDOWFILE, os.F_OK):
+    with open(WINDOWFILE, 'r') as window_file:
         old_session = json.load(window_file)
         old_by_url = {window_id: [tab['url'] for tab in old_session[window_id]]
                                   for window_id in old_session}
@@ -74,11 +77,11 @@ else:
         window_obj['window ' + str(win_idx)] = tablist
 
 
-with open('windows.json', 'w') as window_file:
+with open(WINDOWFILE, 'w') as window_file:
     #window_file.write(str(type(window_obj)))
     #window_file.write(str(window_obj))
     json.dump(window_obj, window_file, indent=2)
 
 
-os.remove('tabstore.lock')
+os.remove(LOCKFILE)
 extutil.sendMessage(extutil.encodeMessage('done'))

@@ -2,7 +2,6 @@
 extremely limited org parser
 
 """
-ORG_PATH = '../../org/brain/webpages.org'
 HEADING_STRIP = ["'","/","*"]
 
 def parseOrg(path):

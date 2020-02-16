@@ -4,6 +4,7 @@ import orgproperties as org
 import extutil
 import json
 
+ORG_PATH = '../../org/brain/webpages.org'
 
 def fetchOpenWindows(heading_dict):
     windows = {}
@@ -18,7 +19,7 @@ def fetchOpenWindows(heading_dict):
             windows[properties['ACTIVEON']] = [properties['URL']]
     return windows
 
-headings = org.parseOrg(org.ORG_PATH)
+headings = org.parseOrg(ORG_PATH)
 windows = fetchOpenWindows(headings)
 
 extutil.sendMessage(extutil.encodeMessage(json.dumps(windows)))
