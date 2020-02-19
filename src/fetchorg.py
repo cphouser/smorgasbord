@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-import orgproperties as org
-import extutil
+from lib import orgproperties as org
+from lib import extutil
 import json
 
 ORG_PATH = '../../org/brain/webpages.org'

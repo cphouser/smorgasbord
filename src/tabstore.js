@@ -33,24 +33,6 @@ function tabRemove(tabId, info) {
     }
 };
 
-function handleStartup() {
-    //check for value of startup preference
-    initItem = browser.storage.local.get("startup");
-    initItem.then(startupPref, noStartupPref);
-}
-
-function startupPref(preference) {
-    console.log(preference);
-    //switch statement(preference)
-}
-
-function noStartupPref(error) {
-    browser.browserAction.setTitle("Load Windows");
-    browser.browserAction.setBadgeBackgroundColor({'color': 'blue'});
-}
-
-browser.runtime.onStartup.addListener(handleStartup);
-
 browser.webRequest.onCompleted.addListener(
     pageChange,
     {urls: ["<all_urls>"],

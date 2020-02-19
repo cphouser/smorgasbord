@@ -1,6 +1,6 @@
 
 html, body {
-    width: 100px;
+    width: 200px;
 }
 
 .hidden {
@@ -8,25 +8,15 @@ html, body {
 }
 
 .button {
-    margin: 3% auto;
-    padding: 4px;
-    text-align: center;
-    font-size: 1.5em;
+    margin: 2px auto;
+    padding: 2px;
+    text-align: left;
+    font-size: 11pt;
     cursor: pointer;
+    background-color: #E5F2F2;
 }
 
-.load:hover {
+.button:hover {
     background-color: #CFF2F2;
 }
 
-.load {
-    background-color: #E5F2F2;
-}
-
-.save {
-    background-color: #E5F2F2;
-}
-
-.save:hover {
-    background-color: #FBFBC9;
-}

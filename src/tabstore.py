@@ -6,7 +6,7 @@ import time
 import operator
 import json
 
-import extutil
+from lib import extutil
 
 exec_time = int(time.time())
 wait_secs = 10 + (exec_time % 10)
@@ -40,17 +40,20 @@ if os.access(WINDOWFILE, os.F_OK):
                                   for window_id in old_session}
 
         window_matches = {}
+        new_windows = []
         for win_idx, tabs in msg_obj.items():
             matches = {window_id: len([tab['url'] for tab in tabs
                                        if tab['url'] in old_by_url[window_id]])
                        for window_id in old_by_url}
             #find old window with most matching tabs for each current window
-            best_match = max(matches.items(), key=operator.itemgetter(1))[0]
-            window_matches[win_idx] = (best_match, matches[best_match])
+            if matches:
+                best_match = max(matches.items(), key=operator.itemgetter(1))[0]
+                window_matches[win_idx] = (best_match, matches[best_match])
+            else:
+                new_windows.append(tabs)
             #with open('test.txt', 'a') as f:
             #    f.write(str(os.getpid()) + str(window_matches) + '\n')
 
-        new_windows = []
         #assign new window ids by decreasing # of matches
         for win_idx, (matched_win, _) in sorted(window_matches.items(),
                                     key=lambda x: x[1][1], reverse=True):
