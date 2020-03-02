@@ -26,6 +26,7 @@ function listenForClicks() {
                 function startWindows(fetched_windows) {
                     function onCreated(windowInfo) {
                         console.log(`Created window: ${windowInfo.id}`);
+                        //console.log(window_num);
                         return windowInfo.id;
                     }
                     var openIds = [];
@@ -35,8 +36,10 @@ function listenForClicks() {
                         var new_window = browser.windows.create(
                             {url: window_list}
                         );
-                        var newId = new_window.then(onCreated, onError);
-                        openIds.push(newId);
+                        new_window.then(onCreated, onError);
+                        //newId.then(resolved => {
+                        //    console.log(resolved);
+                        //}, onError);
                         window_num++;
                     }
                     return openIds;
@@ -44,11 +47,20 @@ function listenForClicks() {
                 var old_windows = browser.windows.getAll();
                 var closed_ids = old_windows.then(cutWindows, onError);
                 var new_windows = JSON.parse(response);
-                var open_ids = startWindows(new_windows);
+                var openIds = startWindows(new_windows);
                 console.log("Received " + response);
+                return response;
             }
-            function afterLoad() {
+            function afterLoad(orgWindows) {
+                function saveWindowKeys(foxWindows) {
+                    for (windowInfo of foxWindows) {
+                        console.log("fox window: " + windowInfo.id);
+                    }
+                    console.log("org windows: " + orgWindows);
+                }
                 console.log(`windows loaded`);
+                var new_windows = browser.windows.getAll();
+                new_windows.then(saveWindowKeys, onError);
             }
             console.log("load data");
             var sending = browser.runtime.sendNativeMessage(
