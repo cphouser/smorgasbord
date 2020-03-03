@@ -9,7 +9,12 @@
     <body>
         <div id="popup-content">
             <div class="debug-pane"></div>
-            <div class="button load-org">Load from Org</div>
+            <div class="load-select">
+                <div class="button load-org">Load from Org</div>
+                <input type="checkbox" id="scratch-reload" name="load-option" checked><label for="scratch-reload">
+                    Reload Scratch Tabs<br>(removes unsaved tabs)
+                </label>
+            </div>
             <div class="button save-win">Organize Window</div>
             <div class="button save-all">Organize All</div>
             <div class="button save-reload">Organize All and Reload</div>

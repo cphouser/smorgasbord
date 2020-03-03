@@ -21,5 +21,6 @@ def fetchOpenWindows(heading_dict):
 
 headings = org.parseOrg(ORG_PATH)
 windows = fetchOpenWindows(headings)
-
-extutil.sendMessage(extutil.encodeMessage(json.dumps(windows)))
+input = extutil.getMessage()
+#extutil.sendMessage(extutil.encodeMessage(json.dumps(windows)))
+extutil.sendMessage(extutil.encodeMessage(json.dumps(input)))

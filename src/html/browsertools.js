@@ -8,7 +8,7 @@ function listenForClicks() {
         function onError(error) {
             console.log(`Error: ${error}`);
         }
-        function loadFromOrg() {
+        function loadFromOrg(reload_scratch) {
             function onLoad(response) {
                 //close all in window_array. return list of closed ids
                 function cutWindows(window_array) {
@@ -63,15 +63,25 @@ function listenForClicks() {
                 new_windows.then(saveWindowKeys, onError);
             }
             console.log("load data");
-            var sending = browser.runtime.sendNativeMessage(
-                "fetchorg", "Null");
-            sending.then(onLoad, onError).then(afterLoad, onError);
+            //TODO add storage window retrieval
+            var sending;
+            if (reload_scratch) {
+                sending = browser.runtime.sendNativeMessage(
+                    "fetchorg", "tru");
+            } else {
+                sending = browser.runtime.sendNativeMessage(
+                    "fetchorg", "fals");
+            }
+            sending.then(onError, onError);
+            //sending.then(onLoad, onError).then(afterLoad, onError);
         }
         function saveWindowData() {
             console.log("save data");
         }
         if (e.target.classList.contains("load-org")) {
-            loadFromOrg();
+            var scratchReload = e.target.nextElementSibling.checked;
+            //console.log(scratchReload);
+            loadFromOrg(scratchReload);
         } else if (e.target.classList.contains("save-win")) {
             saveWindowData();
         } else if (e.target.classList.contains("save-all")) {
