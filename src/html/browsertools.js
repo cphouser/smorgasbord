@@ -86,8 +86,12 @@ function listenForClicks() {
             saveWindowData();
         } else if (e.target.classList.contains("save-all")) {
             saveWindowData();
-        } else if (e.target.classList.contains("save_reload")) {
+        } else if (e.target.classList.contains("save-reload")) {
             saveWindowData();
+        } else if (e.target.classList.contains("clear-local")) {
+            console.log("clearing local storage");
+            let prom = browser.storage.local.clear();
+            prom.then(console.log("cleared"), onError);
         }
     });
 }

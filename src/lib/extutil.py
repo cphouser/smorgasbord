@@ -14,7 +14,7 @@ def getMessage():
 
     msg_length = struct.unpack('@I', raw_message)[0]
     message = sys.stdin.buffer.read(msg_length).decode('utf-8')
-    return json.loads(message)
+    return json.loads(json.loads(message))
 
 
 def sendMessage(message):
