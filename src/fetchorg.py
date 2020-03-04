@@ -5,6 +5,7 @@ from lib import extutil
 import json
 
 ORG_PATH = '../../org/brain/webpages.org'
+JSON_PATH = '../data/windows.json'
 
 def fetchOpenWindows(heading_dict):
     windows = {}
@@ -19,8 +20,14 @@ def fetchOpenWindows(heading_dict):
             windows[properties['ACTIVEON']] = [properties['URL']]
     return windows
 
+def fetchWindowJSON(JSON_PATH):
+    window_json = {}
+    with open(JSON_PATH) as window_file:
+        window_json = json.load(window_file)
+    return window_json
+
 headings = org.parseOrg(ORG_PATH)
-windows = fetchOpenWindows(headings)
-input = {'message': extutil.getMessage()}
-#extutil.sendMessage(extutil.encodeMessage(json.dumps(windows)))
-extutil.sendMessage(input)
+org_windows = fetchOpenWindows(headings)
+input = extutil.getMessage()
+ff_windows = fetchWindowJSON(JSON_PATH)
+extutil.sendMessage(ff_windows)

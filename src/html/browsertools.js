@@ -63,14 +63,13 @@ function listenForClicks() {
                 new_windows.then(saveWindowKeys, onError);
             }
             console.log("load data");
-            //TODO add storage window retrieval
             var sending;
             if (reload_scratch) {
                 sending = browser.runtime.sendNativeMessage(
-                    "fetchorg", "tru");
+                    "fetchorg", JSON.stringify("tru"));
             } else {
                 sending = browser.runtime.sendNativeMessage(
-                    "fetchorg", "fals");
+                    "fetchorg", JSON.stringify("fals"));
             }
             sending.then(onError, onError);
             //sending.then(onLoad, onError).then(afterLoad, onError);
