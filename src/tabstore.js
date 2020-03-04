@@ -185,8 +185,6 @@ function storeWindows(currentWindows) {
         sending.then(onError, onError);
     }
     var win_obj = {};
-    //query internal storage for windows
-    //windows.then(resaveTabs, onError)
     var loadResults = browser.storage.local.get("windows");
     var saveResults = loadResults.then(resaveTabs, onError);
     saveResults.then(sendWindowMessage, onError);
@@ -200,13 +198,11 @@ function tabRemove(tabId, info) {
 
 browser.webRequest.onCompleted.addListener(
     pageChange,
-    {urls: ["<all_urls>"],
-     types: ["main_frame"]}
+    {urls: ["<all_urls>"], types: ["main_frame"]}
 );
 
 browser.windows.onRemoved.addListener(pageChange);
 
-//passes tabId and removeInfo (windowId, isWindowClosing)
 browser.tabs.onRemoved.addListener(tabRemove);
 
 browser.tabs.onAttached.addListener(pageChange);
