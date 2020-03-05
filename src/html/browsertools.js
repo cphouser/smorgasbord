@@ -66,10 +66,10 @@ function listenForClicks() {
             var sending;
             if (reload_scratch) {
                 sending = browser.runtime.sendNativeMessage(
-                    "fetchorg", JSON.stringify("tru"));
+                    "fetchorg", JSON.stringify(true));
             } else {
                 sending = browser.runtime.sendNativeMessage(
-                    "fetchorg", JSON.stringify("fals"));
+                    "fetchorg", JSON.stringify(false));
             }
             sending.then(onError, onError);
             //sending.then(onLoad, onError).then(afterLoad, onError);

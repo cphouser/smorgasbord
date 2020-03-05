@@ -2,6 +2,7 @@
 
 from lib import orgproperties as org
 from lib import extutil
+from lib import window
 import json
 
 ORG_PATH = '../../org/brain/webpages.org'
@@ -28,6 +29,9 @@ def fetchWindowJSON(JSON_PATH):
 
 headings = org.parseOrg(ORG_PATH)
 org_windows = fetchOpenWindows(headings)
-input = extutil.getMessage()
-ff_windows = fetchWindowJSON(JSON_PATH)
-extutil.sendMessage(ff_windows)
+ff_windows = window.Windows(fetchWindowJSON(JSON_PATH))
+reload_scratch = extutil.getMessage()
+window_delta = window.windowDelta(ff_windows, org_windows, reload_scratch)
+
+
+extutil.sendMessage(window_delta.asDict())
