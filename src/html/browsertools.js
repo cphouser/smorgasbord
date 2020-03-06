@@ -8,6 +8,10 @@ function listenForClicks() {
         function onError(error) {
             console.log(`Error: ${error}`);
         }
+        function debugObj(obj) {
+            console.log('Passed Object as string:');
+            console.log(JSON.parse(obj));
+        }
         function loadFromOrg(reload_scratch) {
             function onLoad(response) {
                 //close all in window_array. return list of closed ids
@@ -71,7 +75,7 @@ function listenForClicks() {
                 sending = browser.runtime.sendNativeMessage(
                     "fetchorg", JSON.stringify(false));
             }
-            sending.then(onError, onError);
+            sending.then(debugObj, onError);
             //sending.then(onLoad, onError).then(afterLoad, onError);
         }
         function saveWindowData() {
