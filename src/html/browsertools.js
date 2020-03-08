@@ -24,30 +24,32 @@ function listenForClicks() {
                         //execute action for each tab
                     }
                     function onSuccess(response) {
-                        console.log("storage_message");
-                        console.log(storage_message);
+                        //console.log("storage_message");
+                        //console.log(storage_message);
                         console.log(`success: ${response}`);
                         return null;
                     }
                     function addWindow(owid) {
+                        //console.log(`+promise to add ${owid} to browser`);
                         var tabList = Object.keys(delta[owid]['tabs']);
                         let add_promise = browser.windows.create({url: tabList});
                         //let storage_promise = add_promise.then(storageAdd, onError);
                         return add_promise;
                     }
                     function newWindowId(win_msg){
-                        console.log(`+new window ${win_msg.id}`);
+                        //console.log(`+new window ${win_msg.id}`);
                         return win_msg.id;
                     }
                     function storageAdd(ffid) {
-                        console.log(
-                            `+adding ${this.owid} to storage w/ ffid ${ffid}`);
-                        storage_windows[ffid] = {
+                        //console.log(`+promise add ${ffid}, ${this.owid} to storage`);
+                        //console.log(
+                        //    `+adding ${this.owid} to storage w/ ffid ${ffid}`);
+                        load_obj[ffid] = {
                             owid: this.owid,
                             tabs: delta[this.owid]['tabs']
                         };
-                        let windows = storage_message;
-                        let save_promise = browser.storage.local.set(windows);
+                        let load_msg = load_obj;
+                        let save_promise = browser.storage.local.set({load_msg});
                         return save_promise;
                     }
                     function cutWindow(ffid) {
@@ -56,20 +58,24 @@ function listenForClicks() {
                         return cut_promise;
                     }
                     var storage_windows = storage_message['windows'];
+                    var load_obj = {};
                     let next_action = null;
                     for (let [ owid, window ] of Object.entries(delta)) {
                         console.log(`+checking ${owid} for any actions`);
                         if ('action' in window) {
                             console.log(`+${window['action']} this window`);
                             if (window['action'] == 'remove') {
-                                delete storage_windows[parseInt(window['ffid'])];
+                                //delete storage_windows[parseInt(window['ffid'])];
                                 next_action = cutWindow(window['ffid']);
                                 next_action = next_action.then(onSuccess, onError);
                             }
                             else if (window['action'] == 'add') {
                                 next_action = addWindow(owid);
+                                console.log("+addWindow");
                                 let new_ffid = next_action.then(newWindowId, onError);
+                                console.log("+storageAdd");
                                 next_action = new_ffid.then(storageAdd.bind({owid: owid}));
+                                console.log("+resolve");
                                 //console.log('next_action');
                                 //console.log(next_action);
                                 next_action = next_action.then(onSuccess, onError);
@@ -82,8 +88,8 @@ function listenForClicks() {
                             }
                         }
                     }
-                    console.log('storage_windows');
-                    console.log(storage_windows);
+                    //console.log('storage_windows');
+                    //console.log(storage_windows);
                     return storage_windows;
                 }
                 function getStorageWindow() {

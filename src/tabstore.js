@@ -14,9 +14,15 @@ function onError(error) {
 
 function storeWindows(currentWindows) {
     function resaveTabs(storageObject) {
+        function matchOnFFID(ffid, tabs) {
+
+        }
         var storedWindows = storageObject.windows;
-        //console.log("storedWindows");
-        //console.log(storedWindows);
+        var load_message = storageObject.load_msg;
+        console.log("storedWindows");
+        console.log(storedWindows);
+        console.log("load_message");
+        console.log(load_message);
         var lostTabs = {};
         console.log("iterating over each current window");
         for (let windowInfo of currentWindows) {
@@ -192,7 +198,7 @@ function storeWindows(currentWindows) {
         sending.then(onError, onError);
     }
     var win_obj = {};
-    var loadResults = browser.storage.local.get("windows");
+    var loadResults = browser.storage.local.get(["windows", "load_msg"]);
     var saveResults = loadResults.then(resaveTabs, onError);
     saveResults.then(sendWindowMessage, onError);
 }
