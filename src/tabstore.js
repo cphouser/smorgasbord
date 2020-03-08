@@ -14,56 +14,53 @@ function onError(error) {
 
 function storeWindows(currentWindows) {
     function resaveTabs(storageObject) {
-        function matchOnFFID(ffid, tabs) {
-
-        }
-        var storedWindows = storageObject.windows;
-        var load_message = storageObject.load_msg;
-        console.log("storedWindows");
-        console.log(storedWindows);
-        console.log("load_message");
-        console.log(load_message);
-        var lostTabs = {};
-        console.log("iterating over each current window");
-        for (let windowInfo of currentWindows) {
-            lostTabs[windowInfo.id] = [];
-            var currentTabs = windowInfo.tabs;
-            if ((typeof(storedWindows) === "object")
-                && (windowInfo.id in storedWindows)) {
-                console.log(`+window ${windowInfo.id} is in storage by ID`);
-                win_obj[windowInfo.id] = {
-                    owid: storedWindows[windowInfo.id].owid,
-                    tabs: {}
-                };
-                for (let tab of currentTabs) {
-                    if (tab.url in storedWindows[windowInfo.id].tabs) {
-                        //console.log(`++tab ${tab.url} in matching storage`);
-                        win_obj[windowInfo.id].tabs[tab.url] =
-                            storedWindows[windowInfo.id].tabs[tab.url];
-                    } else {
-                        //console.log(`++tab ${tab.url} not in matching storage`);
-                        lostTabs[windowInfo.id].push({
-                            url: tab.url,
-                            title: tab.title
-                        });
-                    }
-                } 
+        function matchOnFFID(ffid, c_tabs, store_f, load_f) {
+            let match_source = {};
+            let lost_t = [];
+            if (!(store_f || load_f)) {
+                return null;
+            } else if (load_f && (ffid in load_message)) {
+                console.log(`+window ${ffid} is in load_message by ID`);
+                match_source = load_message[ffid];
+            } else if (store_f && (ffid in storedWindows)) {
+                console.log(`+window ${ffid} is in storedWindows by ID`);
+                match_source = storedWindows[ffid];
+            } else {
+                return null;
             }
-            else if (typeof(storedWindows) === "object") {
-                console.log(`+window ${windowInfo.id} not in storage by FFID`);
-                console.log("+checking stored windows for other matches");
-                for (const [ storedWindowId, storedWindow ]
-                     of Object.entries(storedWindows)) {
+            win_obj[ffid] = {
+                owid: match_source.owid,
+                tabs: {}
+            };
+            for (let tab of c_tabs) {
+                if (tab.url in match_source.tabs) {
+                    //console.log(`++tab ${tab.url} in matching storage`);
+                    win_obj[ffid].tabs[tab.url] =
+                        match_source.tabs[tab.url];
+                } else {
+                    //console.log(`++tab ${tab.url} not in matching storage`);
+                    lost_t.push({
+                        url: tab.url,
+                        title: tab.title
+                    });
+                }
+            }
+            return lost_t;
+        }
+        function matchOnTabs(ffid, c_tabs, store_f) {
+            let lost_t = [];
+            if (store_f) {
+                for (const st_window of Object.values(storedWindows)) {
                     var found = false;
-                    if (Object.keys(storedWindow.tabs).every(st_url => {
-                            currentTabs.some(ct => ct.url == st_url);
+                    if (Object.keys(st_window.tabs).every(st_url => {
+                            c_tabs.some(ct => ct.url == st_url);
                         })) {
-                        console.log(`++window ${storedWindowId} is a match`);
-                        win_obj[windowInfo.id] = storedWindow;
+                        console.log(`++${st_window.owid} is a match`);
+                        win_obj[ffid] = st_window;
                         console.log(`++adding unmatched tabs to lostTabs`);
-                        for (let tab of currentTabs) {
-                            if (!(tab.url in storedWindow.tabs)) {
-                                lostTabs[windowInfo.id].push({
+                        for (let tab of c_tabs) {
+                            if (!(tab.url in st_window.tabs)) {
+                                lost_t.push({
                                     url: tab.url,
                                     title: tab.title
                                 });
@@ -74,26 +71,43 @@ function storeWindows(currentWindows) {
                     }
                 }
                 if (!found) {
-                    console.log(`+FF Window ${windowInfo.id} not in storage`);
+                    console.log(`+FF Window ${ffid} not in storage`);
                     console.log(`+Adding all tabs to lost tabs`);
                     for (let tab of currentTabs) {
-                        lostTabs[windowInfo.id].push({
+                        lost_t.push({
                             url: tab.url,
                             title: tab.title
                         });
                     }
                 }
             }
-            else {
-                console.log("+no windows in storage");
-                console.log(`+Adding all tabs to lost tabs`);
-                for (let tab of currentTabs) {
-                    lostTabs[windowInfo.id].push({
-                        url: tab.url,
-                        title: tab.title
-                    });
-                }
+            return lost_t;
+        }
+        var storedWindows = storageObject.windows;
+        var load_message = storageObject.load_msg;
+        console.log("storedWindows");
+        console.log(storedWindows);
+        console.log("load_message");
+        console.log(load_message);
+        var lostTabs = {};
+        let store_flag = (typeof(storedWindows) === "object");
+        let load_flag =  (typeof(load_message) === "object");
+        console.log("iterating over each current window");
+        for (let windowInfo of currentWindows) {
+            lostTabs[windowInfo.id] = [];
+            var currentTabs = windowInfo.tabs;
+            let list_on_match = matchOnFFID(
+                        windowInfo.id, currentTabs, store_flag, load_flag);
+            if (list_on_match === null) {
+                console.log(`+window ${windowInfo.id} not in storage by FFID`);
+                console.log("+checking stored windows for other matches");
+                lostTabs[windowInfo.id] = matchOnTabs(
+                        windowInfo.id, currentTabs, store_flag);
+            } else {
+                lostTabs[windowInfo.id] = list_on_match;
             }
+            console.log(`+lost tabs for FF ${windowInfo.id}:`);
+            console.log(lostTabs[windowInfo.id]);
         }
         console.log("iterating over each window's lost tabs");
         for (let [ lostWindowId, lostWindowTabs ] of Object.entries(lostTabs)) {
@@ -191,6 +205,11 @@ function storeWindows(currentWindows) {
         var savePromise = browser.storage.local.set({windows});
         return savePromise;
     }
+    function clearLoadMessage() {
+        let removePromise = browser.storage.local.remove("load_msg");
+        return removePromise;
+
+    }
     function sendWindowMessage() {
         var sending = browser.runtime.sendNativeMessage(
             "tabstore", JSON.stringify(win_obj)
@@ -198,9 +217,10 @@ function storeWindows(currentWindows) {
         sending.then(onError, onError);
     }
     var win_obj = {};
-    var loadResults = browser.storage.local.get(["windows", "load_msg"]);
-    var saveResults = loadResults.then(resaveTabs, onError);
-    saveResults.then(sendWindowMessage, onError);
+    let loadResults = browser.storage.local.get(["windows", "load_msg"]);
+    let saveResults = loadResults.then(resaveTabs, onError);
+    let clearMsgResults = saveResults.then(clearLoadMessage, onError);
+    clearMsgResults.then(sendWindowMessage, onError);
 }
 
 function tabRemove(tabId, info) {

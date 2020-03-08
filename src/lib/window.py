@@ -18,7 +18,8 @@ class Windows:
                 return True
             else: return False
 
-        if (ffid, owid) in self.windows:
+        if any([(id_tup in self.windows)
+                for id_tup in [(ffid, owid), (ffid, ''), ('', owid)]]):
             return True
         else:
             return False
@@ -106,7 +107,8 @@ def windowDelta(root_window, reference_window, intersect):
                 else:
                     tab_delta[tab] = tab_data
                     tab_delta[tab]['action'] = 'update'
-            for tab, tab_data in root_match['tabs']:
+            #print(root_match, file=sys.stderr)
+            for tab, tab_data in root_match['tabs'].items():
                 if tab not in tab_delta:
                     if intersect or (tab_data['stored'] is True):
                         tab_delta[tab] = tab_data
@@ -117,11 +119,18 @@ def windowDelta(root_window, reference_window, intersect):
             delta.tabKey({'action': 'add'}, owid=owid)
 
     #check for windows not found in reference_window
+    print("delta.asDict()", file=sys.stderr)
+    print(delta.asDict(), file=sys.stderr)
+    print("reference_window.asDict()", file=sys.stderr)
+    print(reference_window.asDict(), file=sys.stderr)
+    print("root_window.asDict()", file=sys.stderr)
+    print(root_window.asDict(), file=sys.stderr)
     for (ffid, owid), tabs in root_window.windows.items():
         if reference_window.inDict(ffid, owid):
             continue
         elif (intersect
               or all(tabData['stored'] is True for tabData in tabs.values())):
+            print(ffid, owid, file=sys.stderr)
             delta.addWindowDict(ffid, owid, tabDict={'action':'remove'})
         elif (all(tabData['stored'] is False for tabData in tabs.values())):
             continue
