@@ -45,18 +45,28 @@ class Windows:
     def tabKey(self, keypair, ffid='', owid=''):
         for (o_ffid, o_owid), tabs in self.windows.items():
             if ((not ffid) or ffid == o_ffid) and ((not owid) or owid == o_owid):
-                for tab in tabs.values():
-                    tab.update(keypair)
+                tabs.update(keypair)
+                #for tab in tabs.values():
+                #    tab.update(keypair)
 
     def asDict(self, key=None):
         returnDict = {}
         for ((ffid, owid), window_tabs) in self.windows.items():
+            action = None
+            if 'action' in window_tabs:
+                action = window_tabs['action']
+                del window_tabs['action']
             if key == "ffid":
-                returnDict[ffid] = {owid: owid, tabs: window_tabs}
+                returnDict[ffid] = {'owid': owid, 'tabs': window_tabs}
+                win_key = ffid
             elif key == "owid":
-                returnDict[owid] = {ffid: ffid, tabs: window_tabs}
+                returnDict[owid] = {'ffid': ffid, 'tabs': window_tabs}
+                win_key = owid
             else:
-                returnDict[ffid + ', ' + owid] = window_tabs
+                win_key = ffid + ', ' + owid
+                returnDict[win_key] = window_tabs
+            if action:
+                returnDict[win_key]['action'] = action
         return returnDict
 
 
@@ -106,8 +116,6 @@ def windowDelta(root_window, reference_window, intersect):
             delta.addWindowDict(owid=owid, tabDict=tabs)
             delta.tabKey({'action': 'add'}, owid=owid)
 
-    #if intersect:
-    #    return delta
     #check for windows not found in reference_window
     for (ffid, owid), tabs in root_window.windows.items():
         if reference_window.inDict(ffid, owid):

@@ -18,13 +18,13 @@ function storeWindows(currentWindows) {
         //console.log("storedWindows");
         //console.log(storedWindows);
         var lostTabs = {};
-        //console.log("iterating over each current window");
+        console.log("iterating over each current window");
         for (let windowInfo of currentWindows) {
             lostTabs[windowInfo.id] = [];
             var currentTabs = windowInfo.tabs;
             if ((typeof(storedWindows) === "object")
                 && (windowInfo.id in storedWindows)) {
-                //console.log(`+window ${windowInfo.id} has matching ID in storage`);
+                console.log(`+window ${windowInfo.id} is in storage by ID`);
                 win_obj[windowInfo.id] = {
                     owid: storedWindows[windowInfo.id].owid,
                     tabs: {}
@@ -44,17 +44,17 @@ function storeWindows(currentWindows) {
                 } 
             }
             else if (typeof(storedWindows) === "object") {
-                //console.log(`+window ${windowInfo.id} not in storage by FFID`);
-                //console.log("+checking stored windows for other matches");
+                console.log(`+window ${windowInfo.id} not in storage by FFID`);
+                console.log("+checking stored windows for other matches");
                 for (const [ storedWindowId, storedWindow ]
                      of Object.entries(storedWindows)) {
-                    //var found = false;
+                    var found = false;
                     if (Object.keys(storedWindow.tabs).every(st_url => {
                             currentTabs.some(ct => ct.url == st_url);
                         })) {
-                        //console.log(`++window ${storedWindowId} is a match`);
+                        console.log(`++window ${storedWindowId} is a match`);
                         win_obj[windowInfo.id] = storedWindow;
-                        //console.log(`++adding unmatched tabs to lostTabs`);
+                        console.log(`++adding unmatched tabs to lostTabs`);
                         for (let tab of currentTabs) {
                             if (!(tab.url in storedWindow.tabs)) {
                                 lostTabs[windowInfo.id].push({
@@ -63,17 +63,24 @@ function storeWindows(currentWindows) {
                                 });
                             }
                         }
-                        //found = true;
+                        found = true;
                         break;
                     }
                 }
-                //if (!found) {
-                //    console.log(`+FF Window ${windowInfo.Id} not in storage`);
-                //}
+                if (!found) {
+                    console.log(`+FF Window ${windowInfo.id} not in storage`);
+                    console.log(`+Adding all tabs to lost tabs`);
+                    for (let tab of currentTabs) {
+                        lostTabs[windowInfo.id].push({
+                            url: tab.url,
+                            title: tab.title
+                        });
+                    }
+                }
             }
             else {
-                //console.log("+no windows in storage");
-                //console.log(`+Adding all tabs to lost tabs`);
+                console.log("+no windows in storage");
+                console.log(`+Adding all tabs to lost tabs`);
                 for (let tab of currentTabs) {
                     lostTabs[windowInfo.id].push({
                         url: tab.url,
@@ -82,7 +89,7 @@ function storeWindows(currentWindows) {
                 }
             }
         }
-        //console.log("iterating over each window's lost tabs");
+        console.log("iterating over each window's lost tabs");
         for (let [ lostWindowId, lostWindowTabs ] of Object.entries(lostTabs)) {
                 var foundTabs = [];
                 var windowData = {};

@@ -8,51 +8,96 @@ function listenForClicks() {
         function onError(error) {
             console.log(`Error: ${error}`);
         }
+        function onSuccess(response) {
+            console.log(`success: ${response}`);
+            return null;
+        }
         function debugObj(obj) {
             console.log('Passed Object as string:');
             console.log(JSON.parse(obj));
         }
         function loadFromOrg(reload_scratch) {
-            function onLoad(response) {
-                //close all in window_array. return list of closed ids
-                function cutWindows(window_array) {
-                    function onRemoved() {
-                        console.log(`Removed window`);
+            function onOrgLoad(response) {
+                function changeWindows(storage_message) {
+                    function changeWindow(ffid, owid) {
+                        var tabDelta = Object.assign({}, delta[owid]['tabs']);
+                        //execute action for each tab
                     }
-                    var closedIds = [];
-                    for (windowInfo of window_array) {
-                        closedIds.push(windowInfo.id);
-                        browser.windows.remove(windowInfo.id);
+                    function onSuccess(response) {
+                        console.log("storage_message");
+                        console.log(storage_message);
+                        console.log(`success: ${response}`);
+                        return null;
                     }
-                    return closedIds;
+                    function addWindow(owid) {
+                        var tabList = Object.keys(delta[owid]['tabs']);
+                        let add_promise = browser.windows.create({url: tabList});
+                        //let storage_promise = add_promise.then(storageAdd, onError);
+                        return add_promise;
+                    }
+                    function newWindowId(win_msg){
+                        console.log(`+new window ${win_msg.id}`);
+                        return win_msg.id;
+                    }
+                    function storageAdd(ffid) {
+                        console.log(
+                            `+adding ${this.owid} to storage w/ ffid ${ffid}`);
+                        storage_windows[ffid] = {
+                            owid: this.owid,
+                            tabs: delta[this.owid]['tabs']
+                        };
+                        let windows = storage_message;
+                        let save_promise = browser.storage.local.set(windows);
+                        return save_promise;
+                    }
+                    function cutWindow(ffid) {
+                        console.log(`+removing ${ffid}`);
+                        let cut_promise = browser.windows.remove(parseInt(ffid));
+                        return cut_promise;
+                    }
+                    var storage_windows = storage_message['windows'];
+                    let next_action = null;
+                    for (let [ owid, window ] of Object.entries(delta)) {
+                        console.log(`+checking ${owid} for any actions`);
+                        if ('action' in window) {
+                            console.log(`+${window['action']} this window`);
+                            if (window['action'] == 'remove') {
+                                delete storage_windows[parseInt(window['ffid'])];
+                                next_action = cutWindow(window['ffid']);
+                                next_action = next_action.then(onSuccess, onError);
+                            }
+                            else if (window['action'] == 'add') {
+                                next_action = addWindow(owid);
+                                let new_ffid = next_action.then(newWindowId, onError);
+                                next_action = new_ffid.then(storageAdd.bind({owid: owid}));
+                                //console.log('next_action');
+                                //console.log(next_action);
+                                next_action = next_action.then(onSuccess, onError);
+                            }
+                        }
+                        else {
+                            console.log(`+checking ${owid} tabs for any actions`);
+                            if (window['ffid'] in storage_windows) {
+                                next_action = changeWindow(window['ffid'], owid);
+                            }
+                        }
+                    }
+                    console.log('storage_windows');
+                    console.log(storage_windows);
+                    return storage_windows;
                 }
-                //open all in fetched_windows, return list of open ids
-                function startWindows(fetched_windows) {
-                    function onCreated(windowInfo) {
-                        console.log(`Created window: ${windowInfo.id}`);
-                        //console.log(window_num);
-                        return windowInfo.id;
-                    }
-                    var openIds = [];
-                    var window_num = 1;
-                    while (window_num in new_windows){
-                        var window_list = new_windows[window_num];
-                        var new_window = browser.windows.create(
-                            {url: window_list}
-                        );
-                        new_window.then(onCreated, onError);
-                        //newId.then(resolved => {
-                        //    console.log(resolved);
-                        //}, onError);
-                        window_num++;
-                    }
-                    return openIds;
+                function getStorageWindow() {
+                    let store_promise = browser.storage.local.get("windows");
+                    return store_promise;
                 }
-                var old_windows = browser.windows.getAll();
-                var closed_ids = old_windows.then(cutWindows, onError);
-                var new_windows = JSON.parse(response);
-                var openIds = startWindows(new_windows);
-                console.log("Received " + response);
+                var delta = JSON.parse(response);
+                console.log('delta');
+                console.log(delta);
+                let storage = getStorageWindow();
+                let update = storage.then(changeWindows);
+                console.log('update');
+                //update.then(onSuccess,onError);
+                //console.log(update);
                 return response;
             }
             function afterLoad(orgWindows) {
@@ -75,7 +120,7 @@ function listenForClicks() {
                 sending = browser.runtime.sendNativeMessage(
                     "fetchorg", JSON.stringify(false));
             }
-            sending.then(debugObj, onError);
+            var loaded = sending.then(onOrgLoad, onError);
             //sending.then(onLoad, onError).then(afterLoad, onError);
         }
         function saveWindowData() {
@@ -91,10 +136,16 @@ function listenForClicks() {
             saveWindowData();
         } else if (e.target.classList.contains("save-reload")) {
             saveWindowData();
-        } else if (e.target.classList.contains("clear-local")) {
+        }
+        else if (e.target.classList.contains("clear-local")) {
             console.log("clearing local storage");
             let prom = browser.storage.local.clear();
             prom.then(console.log("cleared"), onError);
+        }
+        else if (e.target.classList.contains("print-local")) {
+            console.log("smorgasbord local storage:");
+            let prom = browser.storage.local.get();
+            prom.then(response => {console.log(response);}, onError);
         }
     });
 }

@@ -50,4 +50,4 @@ if __name__ == '__main__':
     reload_scratch = extutil.getMessage()
     window_delta = window.windowDelta(ff_windows, org_windows, reload_scratch)
 
-    extutil.sendMessage(window_delta.asDict())
+    extutil.sendMessage(window_delta.asDict('owid'))
