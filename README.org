@@ -1,1 +1,39 @@
-../org/brain/smorgasbord-README.org
+#+BRAIN_PARENTS: smorgasbord
+#+STARTUP: indent
+
+* Smorgasbord
+Separating the web from the browser. eventually. An attempt to liberate browser data such as:
+- Windows of Tabs
+- Folders of Bookmarks
+- Access records of these
+from the browser-plugin environment with another browser plugin. Smorgasbord connects your browser state to an Emacs org-mode document where each important link is stored for organization and annotation. Current focus is on Firefox implementation.
+
+** Use
+[include some links to org-mode intro resources]
+tl;dr: org mode is every application on your '98 pda built into intelligent markdown documents. It runs in Emacs. The manual comes highly recommended.
+
+A simplified idea of this abstraction is: The web browser is a viewport on the org document. The viewed part of the document is interactive - The organization and metadata of a link can be changed while open in the web browser. The specification for the viewport exists in the native structure of the document.
+*** Setup
+Every tab and bookmark (any url reference worth keeping around) is put into a .org file in the following form:
+
+1) Each link is a heading, where the heading is the name of the link.
+2) The URL for this link is assigned to the property :URL: in the heading property drawer. Headings without URL's can be used for categorizing these links.
+3) A tag on any link heading represents the name of an active window in your browser.
+
+An Example:
+#+BEGIN_EXAMPLE
+,** github home   :MainWindow:
+  :PROPERTIES:
+  :URL: https://github.com/xeroxcat
+  :ID: 59d9136d-22f6-4834-894b-035d9c0a4fca
+  :CTIME: 2020-02-04 19:59:53
+  :OTIME: 2020-02-04 19:59:53
+  :END:
+  anything else of note can go here
+#+END_EXAMPLE
+The other properties here are optional and related to tangential functionality [link to some description of org-brain]. Generally, smorgasbord puts no restrictions on what else can be put in the properties drawer.
+
+** Project State
+[[smorgasbord.org][A loosely structured design doc]] 
+
+This project does not currently have any documented setup procedure. Once core features begin working this will be prioritized.
