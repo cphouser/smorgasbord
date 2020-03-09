@@ -6,7 +6,6 @@ class Windows:
         for ffid, window in windowDict.items():
             self.windows[(ffid, window['owid'])] = window['tabs']
 
-
     def inDict(self, ffid='', owid=''):
         if not ffid:
             if any(o_id == owid for (f_id, o_id) in self.windows):
@@ -23,7 +22,6 @@ class Windows:
             return True
         else:
             return False
-        
 
     def matchID(self, ffid='', owid=''):
         match = {}
@@ -47,8 +45,6 @@ class Windows:
         for (o_ffid, o_owid), tabs in self.windows.items():
             if ((not ffid) or ffid == o_ffid) and ((not owid) or owid == o_owid):
                 tabs.update(keypair)
-                #for tab in tabs.values():
-                #    tab.update(keypair)
 
     def asDict(self, key=None):
         returnDict = {}
@@ -70,7 +66,6 @@ class Windows:
                 returnDict[win_key]['action'] = action
         return returnDict
 
-
     def addWindowDict(self, ffid='', owid='', tabDict={}):
         if (not ffid) and (not owid):
             raise Exception('Could not add window dict, no identifiers given')
@@ -78,21 +73,13 @@ class Windows:
             raise Exception('Could not add window dict, matching entry loaded')
         self.windows[(ffid, owid)] = tabDict
 
-#def matchTabs(tab, o_tab):
-#    for key in tab:
-#        if key in o_tab:
-#            if tab[key] != o_tab[key]:
-#                return false
-        #print(tabs, file=sys.stderr)
-#def mergeTabs(tab, o_tab, pref=None):
-#    if pref == None:
-#        pass
 
 def initFromOrg(windowDict):
     orgWindows = Windows()
     for owid, tabs in windowDict.items():
         orgWindows.addWindowDict(owid=owid, tabDict=tabs)
     return orgWindows
+
 
 def windowDelta(root_window, reference_window, intersect):
     delta = Windows()
@@ -118,19 +105,12 @@ def windowDelta(root_window, reference_window, intersect):
             delta.addWindowDict(owid=owid, tabDict=tabs)
             delta.tabKey({'action': 'add'}, owid=owid)
 
-    #check for windows not found in reference_window
-    print("delta.asDict()", file=sys.stderr)
-    print(delta.asDict(), file=sys.stderr)
-    print("reference_window.asDict()", file=sys.stderr)
-    print(reference_window.asDict(), file=sys.stderr)
-    print("root_window.asDict()", file=sys.stderr)
-    print(root_window.asDict(), file=sys.stderr)
     for (ffid, owid), tabs in root_window.windows.items():
         if reference_window.inDict(ffid, owid):
             continue
         elif (intersect
               or all(tabData['stored'] is True for tabData in tabs.values())):
-            print(ffid, owid, file=sys.stderr)
+            #print(ffid, owid, file=sys.stderr)
             delta.addWindowDict(ffid, owid, tabDict={'action':'remove'})
         elif (all(tabData['stored'] is False for tabData in tabs.values())):
             continue

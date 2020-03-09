@@ -20,12 +20,38 @@ function listenForClicks() {
             function onOrgLoad(response) {
                 function changeWindows(storage_message) {
                     function changeWindow(ffid, owid) {
-                        var tabDelta = Object.assign({}, delta[owid]['tabs']);
-                        //execute action for each tab
+                        let tabDelta = Object.assign({}, delta[owid]['tabs']);
+                        let addTabs = [];
+                        let updateTabs = {};
+                        let removeTabs = [];
+                        //console.log(`+${ffid}: ${owid} tabs`);
+                        for (let [tab, tabData] of Object.entries(tabDelta)) {
+                            let tab_action = tabData.action;
+                            delete tabData.action;
+                            //console.log(tab);
+                            if (tab_action == 'remove') {
+                                removeTabs.push(tab);
+                            }
+                            else if (tab_action == 'update') {
+                                updateTabs[tab] = tabData;
+                            }
+                            else if (tab_action == 'add') {
+                                addTabs.push(tab);
+                                updateTabs[tab] = tabData;
+                            }
+                            else {
+                                console.log(`unknown tab action: ${tab_action}`);
+                            }
+                        }
+                        //console.log("updateTabs");
+                        //console.log(updateTabs);
+                        //console.log("removeTabs");
+                        //console.log(removeTabs);
+                        //console.log("addTabs");
+                        //console.log(addTabs);
+                        return [updateTabs, removeTabs, addTabs];
                     }
                     function onSuccess(response) {
-                        //console.log("storage_message");
-                        //console.log(storage_message);
                         console.log(`success: ${response}`);
                         return null;
                     }
@@ -33,14 +59,13 @@ function listenForClicks() {
                         //console.log(`+promise to add ${owid} to browser`);
                         var tabList = Object.keys(delta[owid]['tabs']);
                         let add_promise = browser.windows.create({url: tabList});
-                        //let storage_promise = add_promise.then(storageAdd, onError);
                         return add_promise;
                     }
                     function newWindowId(win_msg){
                         //console.log(`+new window ${win_msg.id}`);
                         return win_msg.id;
                     }
-                    function storageAdd(ffid) {
+                    function storageAddWindow(ffid) {
                         //console.log(`+promise add ${ffid}, ${this.owid} to storage`);
                         //console.log(
                         //    `+adding ${this.owid} to storage w/ ffid ${ffid}`);
@@ -48,12 +73,51 @@ function listenForClicks() {
                             owid: this.owid,
                             tabs: delta[this.owid]['tabs']
                         };
+                        //console.log("load_obj");
+                        //console.log(load_obj);
+                        let load_msg = load_obj;
+                        let store_promise = browser.storage.local.set({load_msg});
+                        return store_promise;
+                    }
+                    function storeWindow(ffid, owid, tabsObj) {
+                        load_obj[ffid] = {
+                            owid: owid,
+                            tabs: tabsObj
+                        };
+                        //console.log("load_obj");
+                        //console.log(load_obj);
                         let load_msg = load_obj;
                         let save_promise = browser.storage.local.set({load_msg});
                         return save_promise;
                     }
+                    function addTabs(response) {
+                        for (const tab_url of this.tabs) {
+                            browser.tabs.create({
+                                url: tab_url,
+                                windowId: parseInt(this.ffid)
+                            });
+                        }
+                    }
+                    function removeTabs(ffid, tabList) {
+                        function removeById(tabArray) {
+                            let id_list = [];
+                            for (const tab of tabArray) {
+                                if (tabList.includes(tab.url)
+                                        && (tab.id != (browser.tabs.TAB_ID_NONE))) {
+                                    id_list.push(tab.id);
+                                }
+                            }
+                            //console.log(id_list);
+                            return browser.tabs.remove(id_list);
+
+                        }
+                        let tabs_promise = browser.tabs.query(
+                                {windowId: parseInt(ffid)});
+                        let remove_promise = tabs_promise.then(removeById, onError);
+                        return remove_promise;
+                    }
                     function cutWindow(ffid) {
-                        console.log(`+removing ${ffid}`);
+                        //console.log(`+removing ${ffid}`);
                         let cut_promise = browser.windows.remove(parseInt(ffid));
                         return cut_promise;
                     }
@@ -61,30 +125,31 @@ function listenForClicks() {
                     var load_obj = {};
                     let next_action = null;
                     for (let [ owid, window ] of Object.entries(delta)) {
-                        console.log(`+checking ${owid} for any actions`);
+                        //console.log(`+checking ${owid} for any actions`);
                         if ('action' in window) {
-                            console.log(`+${window['action']} this window`);
+                            //console.log(`+${window['action']} this window`);
                             if (window['action'] == 'remove') {
-                                //delete storage_windows[parseInt(window['ffid'])];
                                 next_action = cutWindow(window['ffid']);
                                 next_action = next_action.then(onSuccess, onError);
                             }
                             else if (window['action'] == 'add') {
                                 next_action = addWindow(owid);
-                                console.log("+addWindow");
                                 let new_ffid = next_action.then(newWindowId, onError);
-                                console.log("+storageAdd");
-                                next_action = new_ffid.then(storageAdd.bind({owid: owid}));
-                                console.log("+resolve");
-                                //console.log('next_action');
-                                //console.log(next_action);
+                                next_action = new_ffid.then(storageAddWindow.bind({owid: owid}));
                                 next_action = next_action.then(onSuccess, onError);
                             }
                         }
                         else {
-                            console.log(`+checking ${owid} tabs for any actions`);
+                            //console.log(`+checking ${owid} tabs for any actions`);
                             if (window['ffid'] in storage_windows) {
-                                next_action = changeWindow(window['ffid'], owid);
+                                const [updates, removes, adds] =
+                                            changeWindow(window['ffid'], owid);
+                                next_action = removeTabs(window['ffid'], removes);
+                                next_action = next_action.then(onSuccess, onError);
+                                let save_promise = storeWindow(
+                                    window['ffid'], owid, updates);
+                                save_promise.then(addTabs.bind(
+                                    {ffid: window['ffid'], tabs: adds}));
                             }
                         }
                     }
@@ -97,25 +162,14 @@ function listenForClicks() {
                     return store_promise;
                 }
                 var delta = JSON.parse(response);
-                console.log('delta');
-                console.log(delta);
+                //console.log('delta');
+                //console.log(delta);
                 let storage = getStorageWindow();
                 let update = storage.then(changeWindows);
-                console.log('update');
+                //console.log('update');
                 //update.then(onSuccess,onError);
                 //console.log(update);
                 return response;
-            }
-            function afterLoad(orgWindows) {
-                function saveWindowKeys(foxWindows) {
-                    for (windowInfo of foxWindows) {
-                        console.log("fox window: " + windowInfo.id);
-                    }
-                    console.log("org windows: " + orgWindows);
-                }
-                console.log(`windows loaded`);
-                var new_windows = browser.windows.getAll();
-                new_windows.then(saveWindowKeys, onError);
             }
             console.log("load data");
             var sending;
@@ -127,14 +181,12 @@ function listenForClicks() {
                     "fetchorg", JSON.stringify(false));
             }
             var loaded = sending.then(onOrgLoad, onError);
-            //sending.then(onLoad, onError).then(afterLoad, onError);
         }
         function saveWindowData() {
             console.log("save data");
         }
         if (e.target.classList.contains("load-org")) {
             var scratchReload = e.target.nextElementSibling.checked;
-            //console.log(scratchReload);
             loadFromOrg(scratchReload);
         } else if (e.target.classList.contains("save-win")) {
             saveWindowData();

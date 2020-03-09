@@ -20,10 +20,10 @@ function storeWindows(currentWindows) {
             if (!(store_f || load_f)) {
                 return null;
             } else if (load_f && (ffid in load_message)) {
-                console.log(`+window ${ffid} is in load_message by ID`);
+                //console.log(`+window ${ffid} is in load_message by ID`);
                 match_source = load_message[ffid];
             } else if (store_f && (ffid in storedWindows)) {
-                console.log(`+window ${ffid} is in storedWindows by ID`);
+                //console.log(`+window ${ffid} is in storedWindows by ID`);
                 match_source = storedWindows[ffid];
             } else {
                 return null;
@@ -55,9 +55,9 @@ function storeWindows(currentWindows) {
                     if (Object.keys(st_window.tabs).every(st_url => {
                             c_tabs.some(ct => ct.url == st_url);
                         })) {
-                        console.log(`++${st_window.owid} is a match`);
+                        //console.log(`++${st_window.owid} is a match`);
                         win_obj[ffid] = st_window;
-                        console.log(`++adding unmatched tabs to lostTabs`);
+                        //console.log(`++adding unmatched tabs to lostTabs`);
                         for (let tab of c_tabs) {
                             if (!(tab.url in st_window.tabs)) {
                                 lost_t.push({
@@ -71,8 +71,8 @@ function storeWindows(currentWindows) {
                     }
                 }
                 if (!found) {
-                    console.log(`+FF Window ${ffid} not in storage`);
-                    console.log(`+Adding all tabs to lost tabs`);
+                    //console.log(`+FF Window ${ffid} not in storage`);
+                    //console.log(`+Adding all tabs to lost tabs`);
                     for (let tab of currentTabs) {
                         lost_t.push({
                             url: tab.url,
@@ -85,31 +85,31 @@ function storeWindows(currentWindows) {
         }
         var storedWindows = storageObject.windows;
         var load_message = storageObject.load_msg;
-        console.log("storedWindows");
-        console.log(storedWindows);
-        console.log("load_message");
-        console.log(load_message);
+        //console.log("storedWindows");
+        //console.log(storedWindows);
+        //console.log("load_message");
+        //console.log(load_message);
         var lostTabs = {};
         let store_flag = (typeof(storedWindows) === "object");
         let load_flag =  (typeof(load_message) === "object");
-        console.log("iterating over each current window");
+        //console.log("iterating over each current window");
         for (let windowInfo of currentWindows) {
             lostTabs[windowInfo.id] = [];
             var currentTabs = windowInfo.tabs;
             let list_on_match = matchOnFFID(
                         windowInfo.id, currentTabs, store_flag, load_flag);
             if (list_on_match === null) {
-                console.log(`+window ${windowInfo.id} not in storage by FFID`);
-                console.log("+checking stored windows for other matches");
+                //console.log(`+window ${windowInfo.id} not in storage by FFID`);
+                //console.log("+checking stored windows for other matches");
                 lostTabs[windowInfo.id] = matchOnTabs(
                         windowInfo.id, currentTabs, store_flag);
             } else {
                 lostTabs[windowInfo.id] = list_on_match;
             }
-            console.log(`+lost tabs for FF ${windowInfo.id}:`);
-            console.log(lostTabs[windowInfo.id]);
+            //console.log(`+lost tabs for FF ${windowInfo.id}:`);
+            //console.log(lostTabs[windowInfo.id]);
         }
-        console.log("iterating over each window's lost tabs");
+        //console.log("iterating over each window's lost tabs");
         for (let [ lostWindowId, lostWindowTabs ] of Object.entries(lostTabs)) {
                 var foundTabs = [];
                 var windowData = {};
@@ -187,7 +187,6 @@ function storeWindows(currentWindows) {
                 let i = 0;
                 let newOWID = "browser_" + i.toString();
                 let owidList = Object.values(win_obj).map((windowEntry) => windowEntry.owid);
-                console.log(owidList);
                 while (owidList.includes(newOWID)) {
                     i++;
                     newOWID = "browser_" + i.toString();
