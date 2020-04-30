@@ -8,7 +8,9 @@ Separating the web from the browser. eventually. An attempt to liberate browser 
 - Access records of these
 from the browser-plugin environment with another browser plugin. Smorgasbord connects your browser state to a graph database where each important link is stored for organization and annotation. Current focus is on Firefox implementation.
 
+-----
 *NOTE:* What follows in this README is no longer relevant to this project. The structure of this application is currently being re-evaluated with an eye towards implementing the data storage in a database rather than org plaintext. An Emacs viewer may be implemented in some other form but current focus is on designing a Graph Database schema.
+-----
 
 ** Use
 [include some links to org-mode intro resources]
