@@ -14,6 +14,7 @@ from datetime import datetime, date, timedelta, time
 from textwrap import dedent as d
 import json
 import apsw
+from zlib import crc32
 from numpy import interp, add
 
 class TimeToDist:
@@ -108,6 +109,41 @@ class TimeRange:
         else:
             return self.marks[idx]
 
+    def marksDict(self):
+        return {i: {'label': ts.strftime('%d%b%Y')}
+                for i, ts in enumerate(self.marks)}
+
+    def rangeMax(self):
+        return len(self.marks) - 1
+
+
+class ColorMap:
+    def __init__(self, bound1='000000', bound2='FFFFFF'):
+        self.bound1 = self.hexStrTo3Tup(bound1)
+        self.bound2 = self.hexStrTo3Tup(bound2)
+
+    def color(self, value):
+        numeric = format(crc32(value.encode('ascii')),'x').zfill(8)[:6]
+        r1, g1, b1 = self.bound1
+        r2, g2, b2 = self.bound2
+        r_rand = int('0x' + numeric[:2], 0)
+        g_rand = int('0x' + numeric[2:4], 0)
+        b_rand = int('0x' + numeric[4:6], 0)
+        r = int(interp(r_rand, [0,255], [r1, r2]))
+        g = int(interp(g_rand, [0,255], [g1, g2]))
+        b = int(interp(b_rand, [0,255], [b1, b2]))
+        return ('#' + hex(r)[2:].zfill(2) + hex(g)[2:].zfill(2)
+                + hex(b)[2:].zfill(2))
+        
+        #print(self.bound1, self.bound2)
+
+    @staticmethod
+    def hexStrTo3Tup(hex_str):
+        r = int('0x' + hex_str.zfill(6)[:2], 0)
+        g = int('0x' + hex_str.zfill(6)[2:4], 0)
+        b = int('0x' + hex_str.zfill(6)[4:6], 0)
+        return (r, g, b)
+
 
 def timeline_graph(yearRange):
     connection = apsw.Connection(DB_FILE)
@@ -115,7 +151,7 @@ def timeline_graph(yearRange):
     date_0 = timerange.sliderDate(yearRange[0])
     date_1 = timerange.sliderDate(yearRange[1])
     visit_df = pd.read_sql_query(
-        'select link_id, visit_ts, visit_td, tag_id, title '
+        'select link_id, visit_ts, visit_td, tag_id, title, url '
         'from links join visits using (link_id) left join link_tags '
         'using (link_id) where visit_ts >= '
         f'"{date_0}" and visit_ts <= "{date_1}"',
@@ -129,7 +165,9 @@ def timeline_graph(yearRange):
     days = sorted(set(visit_df['day']))
 
     G = nx.from_pandas_edgelist(visit_df, 'day', 'link_id', 'visit_td',
-                                create_using=nx.MultiGraph())
+                                create_using=nx.DiGraph())
+
+    tags = {tag: dict(x_off=0,parent=None) for tag in set(visit_df['tag_id'])}
 
     #get coordinates for dates - distribute from 0 to 1 along y axis
     xy_dict = TimeToDist.setIntervals(days)
@@ -138,11 +176,13 @@ def timeline_graph(yearRange):
         link_id = row[1]
         visit_ts = row[0]
         tag_id = row[3]
-        url = row[4]
-        visit_day = row[5]
+        title = row[4]
+        url = row[5]
+        visit_day = row[6]
         if link_id in xy_dict:
             continue
         G.nodes[link_id]['url'] = url
+        G.nodes[link_id]['title'] = title
         #offset vertical position by time value of visit
         link_xy = tuple(add(xy_dict[visit_day],
                             (0.5, TimeToDist.timeOffset(visit_ts))))
@@ -150,6 +190,7 @@ def timeline_graph(yearRange):
         if tag_id not in xy_dict:
             tag_xy = tuple(add(xy_dict[link_id], (0.5, 0)))
             xy_dict[tag_id] = tag_xy
+            
         G.add_edge(link_id, tag_id)
         # print(row[1],row[3],link_xy)
 
@@ -157,16 +198,16 @@ def timeline_graph(yearRange):
     pos = nx.drawing.layout.spring_layout(G,
                                           pos=NetworkLayout(xy_dict).asDict(),
                                           fixed=days,
-                                          k=0.01,
-                                          threshold=1)
+                                          k=0.03,
+                                          threshold=0.8)
     #pos = NetworkLayout(xy_dict).asDict()
 
     for node in G.nodes:
         G.nodes[node]['pos'] = list(pos[node])
 
     traceRecode = []
-    node_trace = go.Scatter(x=[], y=[], hovertext=[], text=[],
-                            mode='markers+text',
+    node_trace = go.Scatter(x=[], y=[], hovertext=[], text=[], ids=[],
+                            mode='markers+text', customdata=[],
                             textposition='middle left', hoverinfo='text',
                             marker={'size': 5, 'color': 'LightSkyBlue'})
 
@@ -175,11 +216,16 @@ def timeline_graph(yearRange):
         hovertext = ''
         if isinstance(node, date):
             text = str(node)
-        elif 'url' in G.nodes[node]:
-            hovertext = G.nodes[node]['url']
+            node_trace['customdata'] += tuple([dict(type='day')])
+        elif 'title' in G.nodes[node]:
+            hovertext = G.nodes[node]['title']
+            node_trace['customdata'] += tuple([dict(type='link',
+                                                    url=G.nodes[node]['url'])])
         else:
             hovertext = str(node)
+            node_trace['customdata'] += tuple([dict(type='tag')])
         x, y = G.nodes[node]['pos']
+        node_trace['ids'] += tuple([node])
         node_trace['x'] += tuple([x])
         node_trace['y'] += tuple([y])
         node_trace['hovertext'] += tuple([hovertext])
@@ -188,11 +234,18 @@ def timeline_graph(yearRange):
     for edge in G.edges:
         x0, y0 = G.nodes[edge[0]]['pos']
         x1, y1 = G.nodes[edge[1]]['pos']
+        x_range = x1 - x0
+        y_range = y1 - y0
+        rx0 = x0 + (x_range / 3)
+        ry0 = y0 + (y_range / 9)
+        lx1 = x1 - (x_range / 3)
+        ly1 = y1 - (y_range / 9)
         #weight
-        trace = go.Scatter(x=tuple([x0, x1, None]), y=tuple([y0, y1, None]),
+        trace = go.Scatter(x=tuple([x0, rx0, lx1, x1, None]),
+                           y=tuple([y0, ry0, ly1, y1, None]),
                            mode='lines',# line={'width': weight},
-                           marker=dict(color='#999'),
-                           text='',
+                           marker=dict(color=colormap.color(edge[1])),
+                           text='', hoverinfo='skip',
                            line_shape='spline', opacity=1)
         traceRecode.append(trace)
 
@@ -204,9 +257,10 @@ def timeline_graph(yearRange):
                             margin={'b': 10, 'l': 80, 'r': 10, 't': 10},
                             xaxis={'showgrid': False, 'zeroline': False,
                                    'showticklabels': False,
-                                   'range':[-0.13,1.03]},
+                                   'range':[-0.13,1.15],
+                                   'fixedrange':True},
                             yaxis={'showgrid': False, 'zeroline': False,
-                                    'showticklabels': False},
+                                    'showticklabels': False, 'fixedrange':True},
                             height=800, clickmode='event+select',
                             annotations=[
                                 dict(ax=(G.nodes[edge[0]]['pos'][0]
@@ -231,10 +285,11 @@ DB_FILE = 'smorgasbord.db'
 
 # query the database to initialize time range
 timerange = TimeRange()
-TIME_RANGE=[len(timerange.marks) - 2, len(timerange.marks) - 1]
+TIME_RANGE=[timerange.rangeMax() - 1, timerange.rangeMax()]
 
 # styles: for right side hover/click component
 styles = {'pre': {'border': 'thin lightgrey solid', 'overflowX': 'scroll'}}
+colormap = ColorMap('660066','ffaaff')
 
 app.layout = html.Div([
     html.Div([html.H1("smorgasbord")], className="row"),
@@ -248,15 +303,15 @@ app.layout = html.Div([
                         children=[
                             dcc.RangeSlider(
                                 id='time-range-slider', min=0,
-                                max=len(timerange.marks) - 1,
+                                max=timerange.rangeMax(),
                                 vertical=True, step=1, value=TIME_RANGE,
-                                marks={i: {'label': ts.strftime('%d%b%Y')}
-                                       for i, ts in enumerate(timerange.marks)}),
+                                marks=timerange.marksDict()),
                             html.Br(),
                             html.Div(id='output-container-range-slider')])]),
             html.Div(className="eight columns",
                      children=[dcc.Graph(
-                         id="my-graph", figure=timeline_graph(TIME_RANGE))]),
+                         id="my-graph", figure=timeline_graph(TIME_RANGE),
+                         config=dict(displayModeBar=False))]),
             html.Div(
                 className="three columns",
                 children=[
@@ -264,15 +319,16 @@ app.layout = html.Div([
                              children=["center on node",
                                        dcc.Input(id="input1", type="text",
                                                  placeholder="link"),
-                                       html.Div(id="output")]),
-                    html.Div(className='twelve columns',
-                             children=['hover data', html.Pre(id='hover-data',
-                                          style=styles['pre'])],
-                             style={'height': '400px'}),
+                                       html.Div(id="output",
+                                       )]),
+                    html.Div(className='twelve columns', id='hover-data',
+                             children=['hover over a node'],
+                             style={'overflow-wrap': 'break-word',
+                                    'height': '300px'}),
                     html.Div(className='twelve columns',
                              children=['click data', html.Pre(id='click-data',
                                           style=styles['pre'])],
-                             style={'height': '400px'})])])])
+                             style={'height': '300px'})])])])
 
 @app.callback(
     dash.dependencies.Output('my-graph', 'figure'),
@@ -286,13 +342,29 @@ def update_output(value):
     dash.dependencies.Output('hover-data', 'children'),
     [dash.dependencies.Input('my-graph', 'hoverData')])
 def display_hover_data(hoverData):
-    return json.dumps(hoverData, indent=2)
-
+    if (hoverData is None or 'points' not in hoverData
+        or not len(hoverData['points'])):
+        return ['hover over a node for info']
+    node = hoverData['points'][0]
+    custom_data = node['customdata']
+    node_type = custom_data['type']
+    node_id = node['id']
+    content = [node_type + ' node']
+    if (node_type == 'link'):
+        content.append(html.Br())
+        content.append(node['hovertext'])
+        content.append(html.Br())
+        content.append(custom_data['url'])
+        content.append(html.Br())
+        
+    return content
 
 @app.callback(
     dash.dependencies.Output('click-data', 'children'),
     [dash.dependencies.Input('my-graph', 'clickData')])
 def display_click_data(clickData):
+    #return ('' if not len(hoverData['points']) else
+    #        str(hoverData['points'][0]['id']))
     return json.dumps(clickData, indent=2)
 
 if __name__ == '__main__':
