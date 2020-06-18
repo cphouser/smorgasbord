@@ -42,7 +42,7 @@ class TimeToDist:
 
 
 class NetworkLayout:
-    def __init__(self, input_dict, spacing=0.01, max_offset=0.25):
+    def __init__(self, input_dict, spacing=0.015, max_offset=0.2):
         self.pos_dict = dict(input_dict)
         inv_pos_dict = self.invert_dict(input_dict)
         wrap_index = int(max_offset / spacing)
@@ -51,8 +51,9 @@ class NetworkLayout:
                 sorted_nodes = sorted(nodes, reverse=True)
                 for i in range(len(nodes)):
                     x_off = (i % wrap_index) * spacing
-                    y_off = (int(i / wrap_index) * spacing
-                             + ((len(nodes) - 1 - i) % wrap_index * spacing * 0.1))
+                    y_off = (int(i / wrap_index) * spacing * 0.7
+                             + ((wrap_index - (i % wrap_index)) * spacing * 0.2))
+                    print(x_off, y_off)
                     self.pos_dict[sorted_nodes[i]] = (x - x_off, y - y_off)
 
     def asDict(self):
@@ -219,7 +220,7 @@ def timeline_graph(dateRange, selected=None):
                 f'visit_ts <= "{date_1}" and tag_id = "{selected["name"]}"',
                 connection, parse_dates=['visit_ts'],
                 index_col='visit_ts')
-        elif node_type == 'date':
+        elif node_type == 'day':
             visit_df = pd.read_sql_query(
                 'select link_id, visit_ts, visit_td, tag_id, title, url '
                 'from links join visits using (link_id) left join link_tags '
@@ -304,31 +305,6 @@ def timeline_graph(dateRange, selected=None):
         G.nodes[node]['pos'] = list(pos[node])
 
     traceRecode = []
-    node_trace = go.Scatter(x=[], y=[], hovertext=[], text=[], ids=[],
-                            mode='markers+text', customdata=[],
-                            textposition='middle left', hoverinfo='text',
-                            marker={'size': 5, 'color': 'LightSkyBlue'})
-
-    for node in G.nodes():
-        text = ''
-        hovertext = ''
-        if isinstance(node, date):
-            text = str(node)
-            node_trace['customdata'] += tuple([dict(type='day')])
-        elif 'title' in G.nodes[node]:
-            hovertext = G.nodes[node]['title']
-            node_trace['customdata'] += tuple([dict(type='link',
-                                                    url=G.nodes[node]['url'])])
-        else:
-            hovertext = str(node)
-            node_trace['customdata'] += tuple([dict(type='tag')])
-        x, y = G.nodes[node]['pos']
-        node_trace['ids'] += tuple([node])
-        node_trace['x'] += tuple([x])
-        node_trace['y'] += tuple([y])
-        node_trace['hovertext'] += tuple([hovertext])
-        node_trace['text'] += tuple([text])
-
     for edge in G.edges:
         x0, y0 = G.nodes[edge[0]]['pos']
         x1, y1 = G.nodes[edge[1]]['pos']
@@ -347,7 +323,29 @@ def timeline_graph(dateRange, selected=None):
                            line_shape='spline', opacity=1)
         traceRecode.append(trace)
 
-    traceRecode.append(node_trace)
+    for node in G.nodes():
+        text = ''
+        hovertext = ''
+        if isinstance(node, date):
+            text = str(node)
+            custom_data = tuple([dict(type='day')])
+        elif 'title' in G.nodes[node]:
+            hovertext = G.nodes[node]['title']
+            custom_data = tuple([dict(type='link', url=G.nodes[node]['url'])])
+        else:
+            hovertext = str(node)
+            custom_data = tuple([dict(type='tag')])
+        x, y = G.nodes[node]['pos']
+        trace = go.Scatter(x=tuple([x]), y=tuple([y]),
+                           hovertext=tuple([hovertext]), text=tuple([text]),
+                           ids=tuple([node]), mode='markers+text',
+                           customdata=custom_data, textposition='middle left',
+                           hoverinfo='text',
+                           marker={'size': 6,
+                                   'color': (colormap.color(node)
+                                             if not isinstance(node, date)
+                                             else 'Black')})
+        traceRecode.append(trace)
 
     figure = {
         "data": traceRecode,
@@ -388,7 +386,7 @@ TIME_RANGE=[timerange.rangeMax() - 1, timerange.rangeMax()]
 
 # styles: for right side hover/click component
 styles = {'pre': {'border': 'thin lightgrey solid', 'overflowX': 'scroll'}}
-colormap = ColorMap('660066','ffaaff')
+colormap = ColorMap('880033','ff88ff')
 
 app.layout = html.Div([
     html.Div([html.H1("smorgasbord")], className="row"),
@@ -433,7 +431,7 @@ app.layout = html.Div([
     dash.dependencies.Output('my-graph', 'figure'),
     [dash.dependencies.Input('time-range-slider', 'value'),
     dash.dependencies.Input('my-graph', 'clickData')])
-def update_range(value, clickData):
+def update_graph(value, clickData):
     TIME_RANGE = value
     if (clickData is None or 'points' not in clickData
         or not len(clickData['points'])):
@@ -442,16 +440,6 @@ def update_range(value, clickData):
         node = clickData['points'][0]
         selected_node = dict(name=node['id'], n_type=node['customdata']['type'])
     return timeline_graph(TIME_RANGE, selected_node)
-
-#@app.callback(
-#    dash.dependencies.Output('my-graph', 'figure'),
-#    [dash.dependencies.Input('link_txt', 'value')])
-#def filter_by_link(link_txt):
-#
-#    return 0
-#
-#def filter_by_tag(tag_txt):
-#    return 0
 
 @app.callback(
     dash.dependencies.Output('hover-data', 'children'),
