@@ -51,7 +51,8 @@ class NetworkLayout:
                 sorted_nodes = sorted(nodes, reverse=True)
                 for i in range(len(nodes)):
                     x_off = (i % wrap_index) * spacing
-                    y_off = int(i / wrap_index) * spacing
+                    y_off = (int(i / wrap_index) * spacing
+                             + ((len(nodes) - 1 - i) % wrap_index * spacing * 0.1))
                     self.pos_dict[sorted_nodes[i]] = (x - x_off, y - y_off)
 
     def asDict(self):
@@ -134,7 +135,7 @@ class ColorMap:
         b = int(interp(b_rand, [0,255], [b1, b2]))
         return ('#' + hex(r)[2:].zfill(2) + hex(g)[2:].zfill(2)
                 + hex(b)[2:].zfill(2))
-        
+
         #print(self.bound1, self.bound2)
 
     @staticmethod
@@ -145,62 +146,159 @@ class ColorMap:
         return (r, g, b)
 
 
-def timeline_graph(yearRange):
+def timeline_graph(dateRange, selected=None):
+    def space_tags(tag_dict, tag_offset=0.5):
+        def percolate_depth(tag_id, inherited_depth):
+            if tag_id is None:
+                #print('END')
+                return 1
+            #print(tag_id, end=' : ')
+            if inherited_depth > tag_dict[tag_id]['depth']:
+                tag_dict[tag_id]['depth'] = inherited_depth
+                depth = percolate_depth(tag_dict[tag_id]['parent'],
+                                       inherited_depth + 1)
+            else:
+                #print('MERGE')
+                depth = tag_dict[tag_id]['depth']
+            return depth
+
+        def recursive_parent(tag_id):
+            for parent in cursor.execute(
+                    f'select parent from tags where tag_id="{tag_id}"'):
+                par_id = parent[0]
+                if par_id is None:
+                    return
+                else:
+                    tag_dict[tag_id]['parent'] = par_id
+                    if par_id not in tag_dict:
+                        tag_dict[par_id] = dict(
+                            depth=tag_dict[tag_id]['depth']+1, parent=None)
+                        recursive_parent(par_id)
+
+        max_depth = 1
+        connection = apsw.Connection(DB_FILE)
+        cursor = connection.cursor()
+        #print(tag_dict.keys())
+        child_list = list(tag_dict.keys())
+        for tag in child_list:
+            recursive_parent(tag)
+        for tag in child_list:
+            print(tag, end=' : ')
+            max_depth = max([percolate_depth(tag_dict[tag]['parent'],
+                                             tag_dict[tag]['depth'] + 1),
+                             max_depth])
+        print(max_depth)
+        #print(max_depth)
+        for tag in tag_dict:
+            tag_dict[tag]['x_off'] = interp(tag_dict[tag]['depth'],
+                                            [0, max_depth], [0, tag_offset])
+            print(tag_dict[tag]['depth'], str(tag_dict[tag]['x_off'])[:5], tag,
+                  '->', tag_dict[tag]['parent'])
+        connection.close()
+
+
+    date_0 = timerange.sliderDate(dateRange[0])
+    date_1 = timerange.sliderDate(dateRange[1])
+
     connection = apsw.Connection(DB_FILE)
-
-    date_0 = timerange.sliderDate(yearRange[0])
-    date_1 = timerange.sliderDate(yearRange[1])
-    visit_df = pd.read_sql_query(
-        'select link_id, visit_ts, visit_td, tag_id, title, url '
-        'from links join visits using (link_id) left join link_tags '
-        'using (link_id) where visit_ts >= '
-        f'"{date_0}" and visit_ts <= "{date_1}"',
-        connection, parse_dates=['visit_ts'],
-        index_col='visit_ts')
-
+    if selected is not None:
+        node_type = selected['n_type']
+        if node_type == 'link':
+            visit_df = pd.read_sql_query(
+                'select link_id, visit_ts, visit_td, tag_id, title, url '
+                'from links join visits using (link_id) left join link_tags '
+                f'using (link_id) where visit_ts >= "{date_0}" and '
+                f'visit_ts <= "{date_1}" and link_id = "{selected["name"]}"',
+                connection, parse_dates=['visit_ts'],
+                index_col='visit_ts')
+        elif node_type == 'tag':
+            visit_df = pd.read_sql_query(
+                'select link_id, visit_ts, visit_td, tag_id, title, url '
+                'from links join visits using (link_id) left join link_tags '
+                f'using (link_id) where visit_ts >= "{date_0}" and '
+                f'visit_ts <= "{date_1}" and tag_id = "{selected["name"]}"',
+                connection, parse_dates=['visit_ts'],
+                index_col='visit_ts')
+        elif node_type == 'date':
+            visit_df = pd.read_sql_query(
+                'select link_id, visit_ts, visit_td, tag_id, title, url '
+                'from links join visits using (link_id) left join link_tags '
+                'using (link_id) where visit_ts >= '
+                f'"{date_0}" and visit_ts <= "{date_1}"',
+                connection, parse_dates=['visit_ts'],
+                index_col='visit_ts')
+    else:
+        # Query for all visited links and associated tags in visit range
+        visit_df = pd.read_sql_query(
+            'select link_id, visit_ts, visit_td, tag_id, title, url '
+            'from links join visits using (link_id) left join link_tags '
+            'using (link_id) where visit_ts >= '
+            f'"{date_0}" and visit_ts <= "{date_1}"',
+            connection, parse_dates=['visit_ts'],
+            index_col='visit_ts')
     connection.close()
 
+    # find days of visits in dataframe
     visit_df['day'] = visit_df.apply(lambda row: row.name.date(), axis=1)
     visit_df.sort_index(inplace=True, ascending=False)
-    days = sorted(set(visit_df['day']))
 
+    # set coordinates for dates - distribute from 0 to 1 along y axis
+    # get date node coordinates as dict and initialize TimeToDist intervals
+    # to offset link nodes by time of last visit
+    days = sorted(set(visit_df['day']))
+    xy_dict = TimeToDist.setIntervals(days)
+
+    # initialize networkX graph with day->link edges
     G = nx.from_pandas_edgelist(visit_df, 'day', 'link_id', 'visit_td',
                                 create_using=nx.DiGraph())
 
-    tags = {tag: dict(x_off=0,parent=None) for tag in set(visit_df['tag_id'])}
+    # create dict of all associated tags, their parents, and the x-offset
+    # from the most recently visited associated link node
+    tags = {tag: dict(depth=1,parent=None) for tag in set(visit_df['tag_id'])}
+    space_tags(tags)# generates field 'x_off'
 
-    #get coordinates for dates - distribute from 0 to 1 along y axis
-    xy_dict = TimeToDist.setIntervals(days)
-    #get coordinates for visits - align horizontally w/ most recent visit
-    for row in visit_df.itertuples():
-        link_id = row[1]
-        visit_ts = row[0]
-        tag_id = row[3]
-        title = row[4]
-        url = row[5]
-        visit_day = row[6]
+    # add tag nodes to graph. get coordinates for link nodes and tags, aligned
+    # horizontally w/ most recently visited child, and store in xy_dict.
+    for visit_ts, link_id, _, tag_id, title, url, visit_day in \
+            visit_df.itertuples():
+        # skip if link data has been added from a more recent visit
         if link_id in xy_dict:
             continue
+
         G.nodes[link_id]['url'] = url
         G.nodes[link_id]['title'] = title
-        #offset vertical position by time value of visit
+
+        # offset vertical position by time value of visit, store link position
         link_xy = tuple(add(xy_dict[visit_day],
                             (0.5, TimeToDist.timeOffset(visit_ts))))
         xy_dict[link_id] = link_xy
-        if tag_id not in xy_dict:
-            tag_xy = tuple(add(xy_dict[link_id], (0.5, 0)))
-            xy_dict[tag_id] = tag_xy
-            
-        G.add_edge(link_id, tag_id)
-        # print(row[1],row[3],link_xy)
 
-    #generate layout with networkx
-    pos = nx.drawing.layout.spring_layout(G,
-                                          pos=NetworkLayout(xy_dict).asDict(),
-                                          fixed=days,
-                                          k=0.03,
-                                          threshold=0.8)
-    #pos = NetworkLayout(xy_dict).asDict()
+        # if tag is not yet in dict, add it w/ all parents not yet added
+        # to graph and position dict. connect each to its parent w/ an edge
+        if tag_id not in xy_dict:
+            tag_xy = tuple(add(xy_dict[link_id], (tags[tag_id]['x_off'], 0)))
+            xy_dict[tag_id] = tag_xy
+            this_tag = tag_id
+            parent = tags[tag_id]['parent']
+            while parent is not None:
+                #print(this_tag, '->', parent)
+                G.add_edge(this_tag, parent)
+                if parent in xy_dict:
+                    break
+                tag_xy = tuple(add(xy_dict[link_id],
+                                   (tags[parent]['x_off'], 0)))
+                xy_dict[parent] = tag_xy
+                this_tag = parent
+                parent = tags[parent]['parent']
+        G.add_edge(link_id, tag_id)
+
+    # generate layout as position dict
+    # space nodes with networkX
+    #pos = nx.drawing.layout.spring_layout(G,
+    #                                      pos=NetworkLayout(xy_dict).asDict(),
+    #                                      fixed=days, k=0.03, threshold=0.8)
+    # or manually space
+    pos = NetworkLayout(xy_dict).asDict()
 
     for node in G.nodes:
         G.nodes[node]['pos'] = list(pos[node])
@@ -260,7 +358,8 @@ def timeline_graph(yearRange):
                                    'range':[-0.13,1.15],
                                    'fixedrange':True},
                             yaxis={'showgrid': False, 'zeroline': False,
-                                    'showticklabels': False, 'fixedrange':True},
+                                   'showticklabels': False,
+                                   'fixedrange':False},
                             height=800, clickmode='event+select',
                             annotations=[
                                 dict(ax=(G.nodes[edge[0]]['pos'][0]
@@ -324,7 +423,7 @@ app.layout = html.Div([
                     html.Div(className='twelve columns', id='hover-data',
                              children=['hover over a node'],
                              style={'overflow-wrap': 'break-word',
-                                    'height': '300px'}),
+                                    'height': '150px'}),
                     html.Div(className='twelve columns',
                              children=['click data', html.Pre(id='click-data',
                                           style=styles['pre'])],
@@ -332,11 +431,27 @@ app.layout = html.Div([
 
 @app.callback(
     dash.dependencies.Output('my-graph', 'figure'),
-    [dash.dependencies.Input('time-range-slider', 'value')])
-def update_output(value):
+    [dash.dependencies.Input('time-range-slider', 'value'),
+    dash.dependencies.Input('my-graph', 'clickData')])
+def update_range(value, clickData):
     TIME_RANGE = value
-    return timeline_graph(value)
+    if (clickData is None or 'points' not in clickData
+        or not len(clickData['points'])):
+        selected_node = None
+    else:
+        node = clickData['points'][0]
+        selected_node = dict(name=node['id'], n_type=node['customdata']['type'])
+    return timeline_graph(TIME_RANGE, selected_node)
 
+#@app.callback(
+#    dash.dependencies.Output('my-graph', 'figure'),
+#    [dash.dependencies.Input('link_txt', 'value')])
+#def filter_by_link(link_txt):
+#
+#    return 0
+#
+#def filter_by_tag(tag_txt):
+#    return 0
 
 @app.callback(
     dash.dependencies.Output('hover-data', 'children'),
@@ -349,23 +464,35 @@ def display_hover_data(hoverData):
     custom_data = node['customdata']
     node_type = custom_data['type']
     node_id = node['id']
-    content = [node_type + ' node']
-    if (node_type == 'link'):
-        content.append(html.Br())
+    content = [node_type + ' node', html.Br()]
+    if node_type in ['link', 'tag']:
         content.append(node['hovertext'])
+    if node_type == 'link':
         content.append(html.Br())
         content.append(custom_data['url'])
-        content.append(html.Br())
-        
+    elif node_type == 'day':
+        content.append(node['text'])
+
     return content
 
 @app.callback(
     dash.dependencies.Output('click-data', 'children'),
     [dash.dependencies.Input('my-graph', 'clickData')])
 def display_click_data(clickData):
-    #return ('' if not len(hoverData['points']) else
-    #        str(hoverData['points'][0]['id']))
     return json.dumps(clickData, indent=2)
+
+#@app.callback(
+#    dash.dependencies.Output('my-graph', 'figure'),
+#    [dash.dependencies.Input('my-graph', 'clickData')])
+#def display_click_data(clickData):
+#    if (clickData is None or 'points' not in clickData
+#        or not len(clickData['points'])):
+#        print(clickdata)
+#        selected_node = None
+#    node = clickData['points'][0]
+#    selected_node = dict(name=node['id'], n_type=node['customdata']['type'])
+#    print(selected_node)
+#    return timeline_graph(TIME_RANGE, selected_node)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
