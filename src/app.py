@@ -52,8 +52,8 @@ class NetworkLayout:
                 for i in range(len(nodes)):
                     x_off = (i % wrap_index) * spacing
                     y_off = (int(i / wrap_index) * spacing * 0.7
-                             + ((wrap_index - (i % wrap_index)) * spacing * 0.2))
-                    print(x_off, y_off)
+                             + ((wrap_index - (i % wrap_index))
+                                * spacing * 0.2))
                     self.pos_dict[sorted_nodes[i]] = (x - x_off, y - y_off)
 
     def asDict(self):
@@ -137,8 +137,6 @@ class ColorMap:
         return ('#' + hex(r)[2:].zfill(2) + hex(g)[2:].zfill(2)
                 + hex(b)[2:].zfill(2))
 
-        #print(self.bound1, self.bound2)
-
     @staticmethod
     def hexStrTo3Tup(hex_str):
         r = int('0x' + hex_str.zfill(6)[:2], 0)
@@ -184,17 +182,16 @@ def timeline_graph(dateRange, selected=None):
         for tag in child_list:
             recursive_parent(tag)
         for tag in child_list:
-            print(tag, end=' : ')
+            #print(tag, end=' : ')
             max_depth = max([percolate_depth(tag_dict[tag]['parent'],
                                              tag_dict[tag]['depth'] + 1),
                              max_depth])
-        print(max_depth)
         #print(max_depth)
         for tag in tag_dict:
             tag_dict[tag]['x_off'] = interp(tag_dict[tag]['depth'],
                                             [0, max_depth], [0, tag_offset])
-            print(tag_dict[tag]['depth'], str(tag_dict[tag]['x_off'])[:5], tag,
-                  '->', tag_dict[tag]['parent'])
+            #print(tag_dict[tag]['depth'], str(tag_dict[tag]['x_off'])[:5], tag,
+            #      '->', tag_dict[tag]['parent'])
         connection.close()
 
 
