@@ -1,7 +1,0 @@
-{
-    "name": "tabstore",
-    "description": "Saves tabs to an externally viewable JSON file",
-    "path": "/home/xeroxcat/Dropbox/smorgasbord/src/tabstore.py",
-    "type": "stdio",
-    "allowed_extensions": [ "smorgasbord@xeroxcat" ]
-}

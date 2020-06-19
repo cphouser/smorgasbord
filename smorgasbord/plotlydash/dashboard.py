@@ -9,13 +9,14 @@ import networkx as nx
 import plotly.graph_objs as go
 
 import pandas as pd
-from colour import Color
 from datetime import datetime, date, timedelta, time
-from textwrap import dedent as d
+# from textwrap import dedent as d
 import json
 import apsw
 from zlib import crc32
 from numpy import interp, add
+
+#from flask import g
 
 class TimeToDist:
     sec_interval = 0;#float of one second offset
@@ -69,15 +70,12 @@ class NetworkLayout:
 
 
 class TimeRange:
-    def __init__(self):
-        connection = apsw.Connection(DB_FILE)
+    def __init__(self, db_conn):
         visit_df = pd.read_sql_query('select visit_ts from visits',
-                                     connection, parse_dates=['visit_ts'])
-        connection.close()
+                                     db_conn, parse_dates=['visit_ts'])
         self.start = visit_df['visit_ts'].min()
         self.end = datetime.combine((visit_df['visit_ts'].max()
-                                     + timedelta(days=1)).date(),
-                                    time.min)
+                                     + timedelta(days=1)).date(), time.min)
         date_list = [self.end]
         date_list.append(self.end - timedelta(days=1))
         date_list.append(self.end - timedelta(days=3))
@@ -145,6 +143,9 @@ class ColorMap:
         return (r, g, b)
 
 
+
+DATABASE = 'data/smorgasbord.db'
+
 def timeline_graph(dateRange, selected=None):
     def space_tags(tag_dict, tag_offset=0.5):
         def percolate_depth(tag_id, inherited_depth):
@@ -171,13 +172,13 @@ def timeline_graph(dateRange, selected=None):
                     tag_dict[tag_id]['parent'] = par_id
                     if par_id not in tag_dict:
                         tag_dict[par_id] = dict(
-                            depth=tag_dict[tag_id]['depth']+1, parent=None)
+                            depth=tag_dict[tag_id]['depth']+1,
+                            parent=None)
                         recursive_parent(par_id)
 
         max_depth = 1
-        connection = apsw.Connection(DB_FILE)
+        connection = apsw.Connection(DATABASE)
         cursor = connection.cursor()
-        #print(tag_dict.keys())
         child_list = list(tag_dict.keys())
         for tag in child_list:
             recursive_parent(tag)
@@ -186,19 +187,18 @@ def timeline_graph(dateRange, selected=None):
             max_depth = max([percolate_depth(tag_dict[tag]['parent'],
                                              tag_dict[tag]['depth'] + 1),
                              max_depth])
-        #print(max_depth)
         for tag in tag_dict:
             tag_dict[tag]['x_off'] = interp(tag_dict[tag]['depth'],
-                                            [0, max_depth], [0, tag_offset])
+                                            [0, max_depth],
+                                            [0, tag_offset])
             #print(tag_dict[tag]['depth'], str(tag_dict[tag]['x_off'])[:5], tag,
             #      '->', tag_dict[tag]['parent'])
         connection.close()
 
+    date_0 = dateRange[0]
+    date_1 = dateRange[1]
 
-    date_0 = timerange.sliderDate(dateRange[0])
-    date_1 = timerange.sliderDate(dateRange[1])
-
-    connection = apsw.Connection(DB_FILE)
+    connection = apsw.Connection(DATABASE)
     if selected is not None:
         node_type = selected['n_type']
         if node_type == 'link':
@@ -207,7 +207,7 @@ def timeline_graph(dateRange, selected=None):
                 'from links join visits using (link_id) left join link_tags '
                 f'using (link_id) where visit_ts >= "{date_0}" and '
                 f'visit_ts <= "{date_1}" and link_id = "{selected["name"]}"',
-                connection, parse_dates=['visit_ts'],
+                conection, parse_dates=['visit_ts'],
                 index_col='visit_ts')
         elif node_type == 'tag':
             visit_df = pd.read_sql_query(
@@ -290,13 +290,9 @@ def timeline_graph(dateRange, selected=None):
                 parent = tags[parent]['parent']
         G.add_edge(link_id, tag_id)
 
-    # generate layout as position dict
-    # space nodes with networkX
-    #pos = nx.drawing.layout.spring_layout(G,
-    #                                      pos=NetworkLayout(xy_dict).asDict(),
-    #                                      fixed=days, k=0.03, threshold=0.8)
-    # or manually space
     pos = NetworkLayout(xy_dict).asDict()
+
+    colormap = ColorMap('880033','ff88ff')
 
     for node in G.nodes:
         G.nodes[node]['pos'] = list(pos[node])
@@ -372,99 +368,142 @@ def timeline_graph(dateRange, selected=None):
 
     return figure
 
+def create_dashboard(server):
+    dash_app = dash.Dash(
+        server = server,
+        routes_pathname_prefix = '/dashapp/',
+        external_stylesheets=['/static/dist/css/styles.css'])
+    #app.title = 'smorgasbord'
+    connection = apsw.Connection(DATABASE)
+    timeRange = TimeRange(connection)
+    connection.close()
+    sel_range=[timeRange.marks[timeRange.rangeMax() - 1],
+               timeRange.marks[timeRange.rangeMax()]]
 
-app = dash.Dash(__name__)
-app.title = 'smorgasbord'
-DB_FILE = 'smorgasbord.db'
+    # styles: for right side hover/click component
+    styles = {'pre': {'border': 'thin lightgrey solid', 'overflowX': 'scroll'}}
 
-# query the database to initialize time range
-timerange = TimeRange()
-TIME_RANGE=[timerange.rangeMax() - 1, timerange.rangeMax()]
+    dash_app.layout = html.Div([
+        html.Div([html.H1("smorgasbord")], className="row"),
+        html.Div(className="row",
+            children=[
+                html.Div(
+                    className="one column",
+                    children=[
+                        html.Div(
+                            className="twelve columns",
+                            children=[
+                                html.Div(className='twelve columns',
+                                         id='time-range-container',
+                                         children=
+                                    [dcc.RangeSlider(id='time-range-slider',
+                                                     min=0, max=1, step=1,
+                                                     vertical=True, value=[0,0])])
+                                     #   'time range selector not yet loaded']),
+                                            ])]),
+                html.Div(className="eight columns", id='graph-container',
+                         children=[dcc.Graph(id="my-graph",
+                                             figure=timeline_graph(sel_range),
+                                             config=dict(displayModeBar=False)
+                         )]
+                ),
+                html.Div(
+                    className="three columns",
+                    children=[
+                        html.Div(className="twelve columns",
+                                 children=["center on node",
+                                           dcc.Input(id="input1", type="text",
+                                                     placeholder="link"),
+                                           html.Div(id="output")]),
+                        html.Div(className='twelve columns', id='hover-data',
+                                 children=['hover over a node'],
+                                 style={'overflow-wrap': 'break-word',
+                                        'height': '150px'}),
+                        html.Div(className='twelve columns',
+                                 children=['click data',
+                                           html.Pre(id='click-data',
+                                                    style=styles['pre'])],
+                                 style={'height': '300px'})
+                    ])
+            ]),
+        html.Div(id='session-data', style={'display': 'none'},
+                 children=json.dumps({'labels':timeRange.marksDict(),
+                                      'dates':timeRange.marks}, default=str)
+        )])
 
-# styles: for right side hover/click component
-styles = {'pre': {'border': 'thin lightgrey solid', 'overflowX': 'scroll'}}
-colormap = ColorMap('880033','ff88ff')
+    init_callbacks(dash_app)
+    return dash_app.server
 
-app.layout = html.Div([
-    html.Div([html.H1("smorgasbord")], className="row"),
-    html.Div(className="row",
-        children=[
-            html.Div(
-                className="one column",
-                children=[
-                    html.Div(
-                        className="twelve columns",
-                        children=[
-                            dcc.RangeSlider(
-                                id='time-range-slider', min=0,
-                                max=timerange.rangeMax(),
-                                vertical=True, step=1, value=TIME_RANGE,
-                                marks=timerange.marksDict()),
-                            html.Br(),
-                            html.Div(id='output-container-range-slider')])]),
-            html.Div(className="eight columns",
-                     children=[dcc.Graph(
-                         id="my-graph", figure=timeline_graph(TIME_RANGE),
-                         config=dict(displayModeBar=False))]),
-            html.Div(
-                className="three columns",
-                children=[
-                    html.Div(className="twelve columns",
-                             children=["center on node",
-                                       dcc.Input(id="input1", type="text",
-                                                 placeholder="link"),
-                                       html.Div(id="output",
-                                       )]),
-                    html.Div(className='twelve columns', id='hover-data',
-                             children=['hover over a node'],
-                             style={'overflow-wrap': 'break-word',
-                                    'height': '150px'}),
-                    html.Div(className='twelve columns',
-                             children=['click data', html.Pre(id='click-data',
-                                          style=styles['pre'])],
-                             style={'height': '300px'})])])])
+def init_callbacks(dash_app):
+    @dash_app.callback(
+        dash.dependencies.Output('time-range-container', 'children'),
+        [dash.dependencies.Input('session-data', 'children')])
+    def populate_range_slider(json_marks):
+        print('populate_range_slider')
+        time_marks = json.loads(json_marks)['labels']
+        connection = apsw.Connection(DATABASE)
+        timeRange = TimeRange(connection)
+        connection.close()
+        sel_range=[timeRange.rangeMax() - 1, timeRange.rangeMax()]
+        time_marks = timeRange.marksDict()
+        return dcc.RangeSlider(id='time-range-slider', vertical=True, min=0,
+                               max=timeRange.rangeMax(), step=1,
+                               value=sel_range, marks=timeRange.marksDict())
 
-@app.callback(
-    dash.dependencies.Output('my-graph', 'figure'),
-    [dash.dependencies.Input('time-range-slider', 'value'),
-    dash.dependencies.Input('my-graph', 'clickData')])
-def update_graph(value, clickData):
-    TIME_RANGE = value
-    if (clickData is None or 'points' not in clickData
-        or not len(clickData['points'])):
-        selected_node = None
-    else:
-        node = clickData['points'][0]
-        selected_node = dict(name=node['id'], n_type=node['customdata']['type'])
-    return timeline_graph(TIME_RANGE, selected_node)
+    @dash_app.callback(
+        dash.dependencies.Output('my-graph', 'figure'),
+        [dash.dependencies.Input('time-range-slider', 'value'),
+         dash.dependencies.Input('my-graph', 'clickData'),
+         dash.dependencies.Input('session-data', 'children'),
+         ])
+    def update_graph(value, clickData, json_marks):
+        print('update_graph')
+        if value is None or value == [0,0] or json_marks is None:
+            raise dash.exceptions.PreventUpdate
+        time_marks = json.loads(json_marks)['dates']
+        #print(time_marks)
+        TIME_RANGE = [time_marks[val] for val in value]
+        if (clickData is None or 'points' not in clickData
+            or not len(clickData['points'])):
+            selected_node = None
+        else:
+            node = clickData['points'][0]
+            selected_node = dict(name=node['id'],
+                                 n_type=node['customdata']['type'])
+        return timeline_graph(TIME_RANGE, selected_node)
 
-@app.callback(
-    dash.dependencies.Output('hover-data', 'children'),
-    [dash.dependencies.Input('my-graph', 'hoverData')])
-def display_hover_data(hoverData):
-    if (hoverData is None or 'points' not in hoverData
-        or not len(hoverData['points'])):
-        return ['hover over a node for info']
-    node = hoverData['points'][0]
-    custom_data = node['customdata']
-    node_type = custom_data['type']
-    node_id = node['id']
-    content = [node_type + ' node', html.Br()]
-    if node_type in ['link', 'tag']:
-        content.append(node['hovertext'])
-    if node_type == 'link':
-        content.append(html.Br())
-        content.append(custom_data['url'])
-    elif node_type == 'day':
-        content.append(node['text'])
+    @dash_app.callback(
+        dash.dependencies.Output('hover-data', 'children'),
+        [dash.dependencies.Input('my-graph', 'hoverData')])
+    def display_hover_data(hoverData):
+        print('display_hover_data')
+        if (hoverData is None or 'points' not in hoverData
+            or not len(hoverData['points'])):
+            return ['hover over a node for info']
+        node = hoverData['points'][0]
+        custom_data = node['customdata']
+        node_type = custom_data['type']
+        node_id = node['id']
+        content = [node_type + ' node', html.Br()]
+        if node_type in ['link', 'tag']:
+            content.append(node['hovertext'])
+        if node_type == 'link':
+            content.append(html.Br())
+            content.append(custom_data['url'])
+        elif node_type == 'day':
+            content.append(node['text'])
 
-    return content
+        return content
 
-@app.callback(
-    dash.dependencies.Output('click-data', 'children'),
-    [dash.dependencies.Input('my-graph', 'clickData')])
-def display_click_data(clickData):
-    return json.dumps(clickData, indent=2)
+    @dash_app.callback(
+        dash.dependencies.Output('click-data', 'children'),
+        [dash.dependencies.Input('my-graph', 'clickData')])
+    def display_click_data(clickData):
+        print('display_click_data')
+        if (clickData is None or 'points' not in clickData
+            or not len(clickData['points'])):
+            return ['hover over a node for info']
+        return json.dumps(clickData, indent=2)
 
 #@app.callback(
 #    dash.dependencies.Output('my-graph', 'figure'),
@@ -479,5 +518,5 @@ def display_click_data(clickData):
 #    print(selected_node)
 #    return timeline_graph(TIME_RANGE, selected_node)
 
-if __name__ == '__main__':
-    app.run_server(debug=True)
+#if __name__ == '__main__':
+#    app.run_server(debug=True)
