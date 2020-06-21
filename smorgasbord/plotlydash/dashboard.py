@@ -10,13 +10,10 @@ import plotly.graph_objs as go
 
 import pandas as pd
 from datetime import datetime, date, timedelta, time
-# from textwrap import dedent as d
 import json
 import apsw
 from zlib import crc32
 from numpy import interp, add
-
-#from flask import g
 
 class TimeToDist:
     sec_interval = 0;#float of one second offset
@@ -377,8 +374,8 @@ def create_dashboard(server):
     connection = apsw.Connection(DATABASE)
     timeRange = TimeRange(connection)
     connection.close()
-    sel_range=[timeRange.marks[timeRange.rangeMax() - 1],
-               timeRange.marks[timeRange.rangeMax()]]
+    sel_range=[timeRange.sliderDate(timeRange.rangeMax() - 1),
+               timeRange.sliderDate(timeRange.rangeMax())]
 
     # styles: for right side hover/click component
     styles = {'pre': {'border': 'thin lightgrey solid', 'overflowX': 'scroll'}}
@@ -396,17 +393,15 @@ def create_dashboard(server):
                                 html.Div(className='twelve columns',
                                          id='time-range-container',
                                          children=
-                                    [dcc.RangeSlider(id='time-range-slider',
-                                                     min=0, max=1, step=1,
-                                                     vertical=True, value=[0,0])])
-                                     #   'time range selector not yet loaded']),
-                                            ])]),
+                                    [dcc.RangeSlider(
+                                        id='time-range-slider',
+                                        min=0, max=1, step=1,
+                                        vertical=True, value=[0,0])])])]),
                 html.Div(className="eight columns", id='graph-container',
-                         children=[dcc.Graph(id="my-graph",
-                                             figure=timeline_graph(sel_range),
-                                             config=dict(displayModeBar=False)
-                         )]
-                ),
+                         children=[
+                             dcc.Graph(id="my-graph",
+                                       figure=timeline_graph(sel_range),
+                                       config=dict(displayModeBar=False))]),
                 html.Div(
                     className="three columns",
                     children=[
@@ -423,13 +418,10 @@ def create_dashboard(server):
                                  children=['click data',
                                            html.Pre(id='click-data',
                                                     style=styles['pre'])],
-                                 style={'height': '300px'})
-                    ])
-            ]),
+                                 style={'height': '300px'})])]),
         html.Div(id='session-data', style={'display': 'none'},
                  children=json.dumps({'labels':timeRange.marksDict(),
-                                      'dates':timeRange.marks}, default=str)
-        )])
+                                      'dates':timeRange.marks}, default=str))])
 
     init_callbacks(dash_app)
     return dash_app.server
@@ -439,7 +431,6 @@ def init_callbacks(dash_app):
         dash.dependencies.Output('time-range-container', 'children'),
         [dash.dependencies.Input('session-data', 'children')])
     def populate_range_slider(json_marks):
-        print('populate_range_slider')
         time_marks = json.loads(json_marks)['labels']
         connection = apsw.Connection(DATABASE)
         timeRange = TimeRange(connection)
@@ -457,7 +448,6 @@ def init_callbacks(dash_app):
          dash.dependencies.Input('session-data', 'children'),
          ])
     def update_graph(value, clickData, json_marks):
-        print('update_graph')
         if value is None or value == [0,0] or json_marks is None:
             raise dash.exceptions.PreventUpdate
         time_marks = json.loads(json_marks)['dates']
@@ -476,7 +466,6 @@ def init_callbacks(dash_app):
         dash.dependencies.Output('hover-data', 'children'),
         [dash.dependencies.Input('my-graph', 'hoverData')])
     def display_hover_data(hoverData):
-        print('display_hover_data')
         if (hoverData is None or 'points' not in hoverData
             or not len(hoverData['points'])):
             return ['hover over a node for info']
@@ -499,7 +488,6 @@ def init_callbacks(dash_app):
         dash.dependencies.Output('click-data', 'children'),
         [dash.dependencies.Input('my-graph', 'clickData')])
     def display_click_data(clickData):
-        print('display_click_data')
         if (clickData is None or 'points' not in clickData
             or not len(clickData['points'])):
             return ['hover over a node for info']
@@ -517,6 +505,3 @@ def init_callbacks(dash_app):
 #    selected_node = dict(name=node['id'], n_type=node['customdata']['type'])
 #    print(selected_node)
 #    return timeline_graph(TIME_RANGE, selected_node)
-
-#if __name__ == '__main__':
-#    app.run_server(debug=True)

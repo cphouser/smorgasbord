@@ -21,3 +21,4 @@ def create_app():
         compile_static_assets(assets)
 
         return app
+

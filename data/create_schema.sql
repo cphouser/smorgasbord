@@ -1,4 +1,4 @@
-CREATE TABLE links(
+CREATE TABLE if not exists links(
        link_id text primary key,
        url text unique,
        matching text unique,
@@ -8,7 +8,7 @@ CREATE TABLE links(
        foreign key (parent) references link(link_id)
                on delete set null on update no action);
 
-create table visits(
+create table if not exists visits(
        link_id text not null,
        visit_ts text not null,
        visit_td text,
@@ -16,18 +16,41 @@ create table visits(
        foreign key (link_id) references links(link_id)
                on delete cascade on update no action);
 
-create table tags(
+create table if not exists tags(
        tag_id text primary key,
        description text,
        parent text,
        foreign key (parent) references tags(tag_id)
                on delete cascade on update no action);
 
-create table link_tags(
+create table if not exists link_tags(
        link_id text not null,
        tag_id text not null,
-       primary key (link_id, tag_id)
+       primary key (link_id, tag_id),
        foreign key (link_id) references links(link_id)
                on delete cascade on update no action,
        foreign key (tag_id) references tags(tag_id)
                on delete cascade on update no action);
+
+create table if not exists windows(
+       win_id text not null,
+       dev_id text,
+       last_update text not null,
+       unique (win_id, dev_id)
+);
+
+create table if not exists window_links(
+       link_id text not null,
+       win_id text not null,
+       visit_ts text not null,
+       visit_td text not null
+);
+
+create trigger if not exists window_exists
+    before insert on window_links
+begin
+  select
+    case
+         when new.win_id not in (select win_id from windows) then
+              raise (ABORT, 'Window does not exist') end;
+end;

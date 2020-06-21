@@ -1,6 +1,6 @@
 smorgasbord.db
 windows.json*
-web_ext/
+web-ext-artifacts/
 .ignore/
 
 
