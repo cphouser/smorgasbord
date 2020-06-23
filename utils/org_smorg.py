@@ -133,9 +133,7 @@ class OrgTables():
 
     @staticmethod
     def link_id(url):
-        #print(url)
         chk_str = format(zlib.crc32(url.encode('ascii')), 'x')
-        #print(chk_str.rjust(8, '0'))
         start_idx = url.find(':') + 1
         while(url[start_idx] == '/'):
             start_idx = start_idx + 1

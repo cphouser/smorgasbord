@@ -13,6 +13,7 @@ function onError(error) {
 }
 
 function storeWindows(currentWindows) {
+    console.log(currentWindows);
     fetch('http://127.0.0.1:5000/devices/pseudoprise', {
     method: 'PUT',
     body: JSON.stringify(currentWindows),

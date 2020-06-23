@@ -16,19 +16,3 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
-def get_windows(win_ids=None, dev_id=None):
-    result = []
-    cur = get_db().cursor()
-    if win_ids is None and dev_id is None:
-        cur.execute('select * from windows')
-        cols = row.getdescription()
-        return [{cols[i]:row[i] for i in range(cols)} for row in cur]
-
-    elif win_ids is None:
-        cur.execute('select * from windows where dev_id = value(?)',
-                    (dev_id))
-        cols = row.getdescription()
-        return [{cols[i]:row[i] for i in range(cols)} for row in cur]
-
-    else:
-        pass

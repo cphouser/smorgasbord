@@ -32,25 +32,46 @@ create table if not exists link_tags(
        foreign key (tag_id) references tags(tag_id)
                on delete cascade on update no action);
 
+-- create table if not exists windows(
+--        win_id text not null,
+--        dev_id text,
+--        last_update text not null,
+--        unique (win_id, dev_id)
+-- );
+
 create table if not exists windows(
-       win_id text not null,
-       dev_id text,
-       last_update text not null,
-       unique (win_id, dev_id)
+       win_id text primary key
 );
 
 create table if not exists window_links(
        link_id text not null,
        win_id text not null,
        visit_ts text not null,
-       visit_td text not null
+       visit_td text not null,
+       foreign key (win_id) references windows(win_id)
+               on delete cascade on update no action
 );
 
-create trigger if not exists window_exists
-    before insert on window_links
-begin
-  select
-    case
-         when new.win_id not in (select win_id from windows) then
-              raise (ABORT, 'Window does not exist') end;
-end;
+create table if not exists device_windows(
+       win_id text not null,
+       dev_id text,
+       unique (win_id, dev_id),
+       foreign key (dev_id) references devices(dev_id)
+               on delete cascade on update no action,
+       foreign key (win_id) references windows(win_id)
+               on delete cascade on update no action
+);
+
+create table if not exists devices(
+       dev_id text primary key
+);
+
+
+-- create trigger if not exists window_exists
+--     before insert on window_links
+-- begin
+--   select
+--     case
+--          when new.win_id not in (select win_id from windows) then
+--               raise (ABORT, 'Window does not exist') end;
+-- end;
