@@ -204,7 +204,7 @@ def timeline_graph(dateRange, selected=None):
                 'from links join visits using (link_id) left join link_tags '
                 f'using (link_id) where visit_ts >= "{date_0}" and '
                 f'visit_ts <= "{date_1}" and link_id = "{selected["name"]}"',
-                conection, parse_dates=['visit_ts'],
+                connection, parse_dates=['visit_ts'],
                 index_col='visit_ts')
         elif node_type == 'tag':
             visit_df = pd.read_sql_query(
@@ -268,6 +268,8 @@ def timeline_graph(dateRange, selected=None):
                             (0.5, TimeToDist.timeOffset(visit_ts))))
         xy_dict[link_id] = link_xy
 
+        if tag_id is None:
+            continue
         # if tag is not yet in dict, add it w/ all parents not yet added
         # to graph and position dict. connect each to its parent w/ an edge
         if tag_id not in xy_dict:
@@ -441,6 +443,7 @@ def init_callbacks(dash_app):
                                max=timeRange.rangeMax(), step=1,
                                value=sel_range, marks=timeRange.marksDict())
 
+
     @dash_app.callback(
         dash.dependencies.Output('my-graph', 'figure'),
         [dash.dependencies.Input('time-range-slider', 'value'),
@@ -451,7 +454,6 @@ def init_callbacks(dash_app):
         if value is None or value == [0,0] or json_marks is None:
             raise dash.exceptions.PreventUpdate
         time_marks = json.loads(json_marks)['dates']
-        #print(time_marks)
         TIME_RANGE = [time_marks[val] for val in value]
         if (clickData is None or 'points' not in clickData
             or not len(clickData['points'])):
@@ -461,6 +463,7 @@ def init_callbacks(dash_app):
             selected_node = dict(name=node['id'],
                                  n_type=node['customdata']['type'])
         return timeline_graph(TIME_RANGE, selected_node)
+
 
     @dash_app.callback(
         dash.dependencies.Output('hover-data', 'children'),
