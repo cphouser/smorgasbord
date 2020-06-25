@@ -1,0 +1,31 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+  <div class="card">
+    <h1 class="site-title">{{ title }}</h1>
+    <p class="subtitle">link database management index</p>
+    <ul>
+      <li>
+        <a href="/dashapp/" class="link">timeline graph</a>
+      </li>
+      <li>
+        <a href="/import/" class="link">import data</a>
+      </li>
+    </ul>
+    <table>
+      <tr>
+        {% for name in columns.values() %}
+          <td class="colname">{{ name }}</td>
+        {% endfor %}
+      </tr>
+      {% for link in recent_links %}
+        <tr>
+          {% for cls, val in link.items() if cls in columns %}
+            <td class="{{ cls }}">{{ val }}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </table>
+
+  </div>
+{% endblock %}

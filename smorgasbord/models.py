@@ -1,6 +1,15 @@
 """Data Models"""
 from . import db
 
+link_tags = db.Table('link_tags',
+                     db.Column('link_id', db.String(),
+                               db.ForeignKey('links.link_id'),
+                               primary_key=True),
+                     db.Column('tag_id', db.String(),
+                               db.ForeignKey('tags.tag_id'),
+                               primary_key=True),
+                     extend_existing=True)
+
 class Link(db.Model):
 
     __tablename__ = 'links'
@@ -12,6 +21,8 @@ class Link(db.Model):
     title = db.Column('title', db.String())
     description = db.Column('description', db.String())
     parent = db.Column('parent', db.String(), db.ForeignKey('links.link_id'))
+    tags = db.relationship('Tag', secondary=link_tags, lazy='subquery',
+                           backref=db.backref('links', lazy=True))
 
 
 class Visit(db.Model):
@@ -33,15 +44,6 @@ class Tag(db.Model):
     id = db.Column('tag_id', db.String(), primary_key=True)
     description = db.Column('description', db.String())
     parent = db.Column('parent', db.String(), db.ForeignKey('tags.id'))
-
-link_tags = db.Table('link_tags',
-                     db.Column('link_id', db.String(),
-                               db.ForeignKey('links.link_id'),
-                               primary_key=True),
-                     db.Column('tag_id', db.String(),
-                               db.ForeignKey('tags.tag_id'),
-                               primary_key=True),
-                     extend_existing=True)
 
 device_windows = db.Table('device_windows',
                           db.Column('win_id', db.String(),
