@@ -371,7 +371,7 @@ def create_dashboard(server):
     dash_app = dash.Dash(
         server = server,
         routes_pathname_prefix = '/dashapp/',
-        external_stylesheets=['/static/dist/css/styles.css'])
+        external_stylesheets=['/static/dist/css/dash.css'])
     #app.title = 'smorgasbord'
     connection = apsw.Connection(DATABASE)
     timeRange = TimeRange(connection)

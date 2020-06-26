@@ -18,6 +18,10 @@ def home():
                            template='home-template')
 
 
+@app.route('/test')
+def test_meth():
+    return json.dumps(dict(result='Test Call Returned'))
+
 @app.route('/recent')
 def show_recent_links():
     days_back = 30
@@ -47,5 +51,5 @@ def show_recent_links():
                            description='recently visited links',
                            columns=columns,
                            recent_links=link_table,
-                           template='home-template')
+                           template='table-view')
 
