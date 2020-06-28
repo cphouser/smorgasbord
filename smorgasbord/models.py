@@ -35,6 +35,12 @@ class Visit(db.Model):
     time = db.Column('visit_ts', db.String(), primary_key=True)
     duration = db.Column('visit_td', db.String())
 
+    def __str__(self):
+        duration = self.duration if self.duration else 'None'
+        return self.time + ' Length: ' + duration
+
+    def __repr__(self):
+        return self.link_id + ': ' + self.__str__()
 
 class Tag(db.Model):
 
@@ -43,7 +49,8 @@ class Tag(db.Model):
 
     id = db.Column('tag_id', db.String(), primary_key=True)
     description = db.Column('description', db.String())
-    parent = db.Column('parent', db.String(), db.ForeignKey('tags.id'))
+    parent = db.Column('parent', db.String(), db.ForeignKey('tags.tag_id'))
+    children = db.relationship('Tag')
 
 device_windows = db.Table('device_windows',
                           db.Column('win_id', db.String(),

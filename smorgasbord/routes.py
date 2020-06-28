@@ -18,16 +18,117 @@ def home():
                            template='home-template')
 
 
-@app.route('/test')
-def test_meth():
-    return json.dumps(dict(result='Test Call Returned'))
+@app.route('/recent/visits')
+def recent_link_visits():
+    link_id = request.args.get('link_id', type=str)
+    days_back = request.args.get('days_back', type=int)
+    time_range = datetime.now() - timedelta(days=days_back)
+    recent_visits = (db.session.query(Visit)
+        .filter(Visit.time > time_range.strftime('%Y-%m-%d %H:%M:%S'))
+        .filter(Visit.link_id==link_id)
+        .order_by(db.desc(Visit.time)))
+    result = '\n'.join([str(visit) for visit in recent_visits])
+    #print(link_id, days_back)
+    #print(list(recent_visits.all()))
+    return json.dumps(dict(link_id=link_id, result=result))
+
+
+@app.route('/link/tags')
+def show_link_tags():
+    link_id = request.args.get('link_id', type=str)
+    link_tags = Link.query.filter_by(id=link_id).first().tags 
+    result = '\n'.join([str(tag) for tag in link_tags])
+    return json.dumps(dict(link_id=link_id, result=result))
+
+
+@app.route('/tag/<tag_id>', methods=['PUT'])
+def add_tag(tag_id):
+    #print(tag_id)
+    if not tag_id == tag_id.strip().lower().replace(' ', '_'):
+        return make_response('tag id must be lowercase with no spaces)', 400);
+    tag = Tag(id=tag_id)
+    db.session.add(tag)
+    db.session.commit()
+    return make_response('success', 200)
+
+
+@app.route('/links/tags', methods=['POST'])
+def add_tag_links():
+    #print(request.form)
+    link_ids = json.loads(request.form.get('link_ids'))
+    tag_id = request.form.get('tag')
+    tag = Tag.query.filter_by(id=tag_id).first()
+    for link_id in link_ids:
+        link = Link.query.filter_by(id=link_id).first()
+        link.tags.append(tag)
+        db.session.add(link)
+    db.session.commit()
+    return make_response('ok', 200)
+
+
+@app.route('/links/tags', methods=['DELETE'])
+def remove_tag_links():
+    tag_id = request.form.get('tag')
+    link_ids = json.loads(request.form.get('link_ids'))
+    tag = Tag.query.filter_by(id=tag_id).first()
+    for link_id in link_ids:
+        link = Link.query.filter_by(id=link_id).first()
+        link.tags.remove(tag)
+    db.session.commit()
+
+    #link_ids = json.loads(request.args.get('link_ids'))
+    #link_tags = set(Link.query.filter_by(id=link_ids.pop()).first().tags)
+    #for link_id in link_ids:
+    #    link_tags = link_tags.intersection(set(
+    #        Link.query.filter_by(id=link_id).first().tags))
+    #print(link_tags)
+    #result = [tag.id for tag in link_tags]
+    #return json.dumps(dict(tags=result))
+
+
+@app.route('/links/tags', methods=['GET'])
+def show_tag_intersection():
+    link_ids = json.loads(request.args.get('link_ids'))
+    link_tags = set(Link.query.filter_by(id=link_ids.pop()).first().tags)
+    for link_id in link_ids:
+        link_tags = link_tags.intersection(set(
+            Link.query.filter_by(id=link_id).first().tags))
+    #print(link_tags)
+    result = [tag.id for tag in link_tags]
+    return json.dumps(dict(tags=result))
+
+
+@app.route('/tags/list')
+def list_tags_tree():
+    def rec_populate(tag, depth=0, end=False):
+        if end:
+            tag_list.append(dict(pre='\u2503' * (depth - 1) + '\u2517 ',
+                                 id=tag.id))
+        elif depth:
+            tag_list.append(dict(pre='\u2503' * (depth - 1) + '\u2523 ',
+                                 id=tag.id))
+        else:
+            tag_list.append(dict(pre='', id=tag.id))
+        children = Tag.query.filter_by(parent=tag.id).order_by(Tag.id).all()
+        last = None
+        if children:
+            last = children.pop()
+        for child in children:
+            rec_populate(child, depth + 1)
+        if last:
+            rec_populate(last, depth + 1, True)
+    tag_list = []
+    root_tags = Tag.query.filter_by(parent=None).order_by(Tag.id)
+    for tag in root_tags:
+        rec_populate(tag)
+    return json.dumps(dict(tags=tag_list))
+    
 
 @app.route('/recent')
 def show_recent_links():
-    days_back = 30
+    days_back = request.args.get('days', default=30, type=int)
     day_str = 'day' if days_back == 1 else str(days_back) + 'days'
     time_range = datetime.now() - timedelta(days=days_back)
-    print(time_range)
     recent_visits = (db.session.query(
         db.func.max(Visit.time), Link, db.func.count('*'))
         .filter(Visit.time > time_range.strftime('%Y-%m-%d %H:%M:%S'))
@@ -36,12 +137,11 @@ def show_recent_links():
         .order_by(db.desc(db.func.max(Visit.time))))
     link_table = []
     for recent_ts, link, visit_count in recent_visits:
-        tags = [tag.id for tag in link.tags]
+        tags = [tag.id for tag in link.tags] if len(link.tags) else ["UNTAGGED"]
         row = dict(id=link.id, time=recent_ts, count=visit_count,
-                   url=link.url, title=link.title, tags=", ".join(tags))
+                   title=link.title, url=link.url, tags=", ".join(tags))
         link_table.append(row)
-    columns = dict(time='Last Visit', count='#Visits in last '+day_str,
-                   url='URL', title='Title', tags='Tags')
+    columns = ['Select', 'Last Visit', '#Visits', 'Title', 'URL', 'Tags']
         #print(recent_ts, link, visit_count)
     #dummy_list = [dict(id='asf', url='sdf', title='sddd', tags="ddddfd"),
     #              dict(id='af', url='df', title='sdd', tags="dddfd"),
@@ -51,5 +151,6 @@ def show_recent_links():
                            description='recently visited links',
                            columns=columns,
                            recent_links=link_table,
+                           days_back=days_back,
                            template='table-view')
 

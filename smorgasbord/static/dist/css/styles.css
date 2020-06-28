@@ -21,9 +21,26 @@
 }
 
 .count {
-    width: 5em;
+    width: 3em;
 }
 
 .tags {
     width: 20%;
+}
+
+.select {
+    width: 3em;
+}
+
+.desc {
+    background-color: #fafafa;
+    margin: 0;
+}
+
+pre {
+    margin: 0;
+}
+
+form {
+    display: inline-block;
 }
