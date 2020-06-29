@@ -36,9 +36,25 @@ def recent_link_visits():
 @app.route('/link/tags')
 def show_link_tags():
     link_id = request.args.get('link_id', type=str)
-    link_tags = Link.query.filter_by(id=link_id).first().tags 
-    result = '\n'.join([str(tag) for tag in link_tags])
+    link_tags = Link.query.filter_by(id=link_id).first().tags
+    tag_strings = []
+    for tag in link_tags:
+        tag_str = tag.id
+        while (tag.parent):
+            tag_str = tag_str + ' \u2194 ' + tag.parent.id
+            tag = tag.parent
+        tag_strings.append(tag_str)
+
+    result = '\n'.join(tag_strings)
     return json.dumps(dict(link_id=link_id, result=result))
+
+
+@app.route('/link/<link_id>', methods=['GET'])
+def get_link_data(link_id):
+    link = Link.query.filter_by(id=link_id).first()
+    return json.dumps(dict(link_id=link_id, title=link.title,
+                           desc=link.description, match=link.match,
+                           parent=link.parent))
 
 
 @app.route('/tag/<tag_id>', methods=['PUT'])
@@ -54,7 +70,6 @@ def add_tag(tag_id):
 
 @app.route('/links/tags', methods=['POST'])
 def add_tag_links():
-    #print(request.form)
     link_ids = json.loads(request.form.get('link_ids'))
     tag_id = request.form.get('tag')
     tag = Tag.query.filter_by(id=tag_id).first()
@@ -76,15 +91,6 @@ def remove_tag_links():
         link.tags.remove(tag)
     db.session.commit()
 
-    #link_ids = json.loads(request.args.get('link_ids'))
-    #link_tags = set(Link.query.filter_by(id=link_ids.pop()).first().tags)
-    #for link_id in link_ids:
-    #    link_tags = link_tags.intersection(set(
-    #        Link.query.filter_by(id=link_id).first().tags))
-    #print(link_tags)
-    #result = [tag.id for tag in link_tags]
-    #return json.dumps(dict(tags=result))
-
 
 @app.route('/links/tags', methods=['GET'])
 def show_tag_intersection():
@@ -93,7 +99,6 @@ def show_tag_intersection():
     for link_id in link_ids:
         link_tags = link_tags.intersection(set(
             Link.query.filter_by(id=link_id).first().tags))
-    #print(link_tags)
     result = [tag.id for tag in link_tags]
     return json.dumps(dict(tags=result))
 
@@ -122,7 +127,7 @@ def list_tags_tree():
     for tag in root_tags:
         rec_populate(tag)
     return json.dumps(dict(tags=tag_list))
-    
+
 
 @app.route('/recent')
 def show_recent_links():
@@ -142,10 +147,6 @@ def show_recent_links():
                    title=link.title, url=link.url, tags=", ".join(tags))
         link_table.append(row)
     columns = ['Select', 'Last Visit', '#Visits', 'Title', 'URL', 'Tags']
-        #print(recent_ts, link, visit_count)
-    #dummy_list = [dict(id='asf', url='sdf', title='sddd', tags="ddddfd"),
-    #              dict(id='af', url='df', title='sdd', tags="dddfd"),
-    #              dict(id='f', url='d', title='sd', tags="dfd")]
     return render_template('recent.jinja2',
                            title='smorgasbord',
                            description='recently visited links',
@@ -153,4 +154,3 @@ def show_recent_links():
                            recent_links=link_table,
                            days_back=days_back,
                            template='table-view')
-
