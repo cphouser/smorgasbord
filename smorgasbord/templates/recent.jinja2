@@ -1,38 +1,25 @@
 {% extends "layout.jinja2" %}
 
-{% macro days(count) %}
-  {% if count == 1 %} day
-  {% else %} {{ count }} days
-  {% endif %}
-{% endmacro %}
+
+{% block toolbox %}
+  <div class="toolbox" id="bulk-edit" style="display:none">
+    <button type="button" id="load-tag-edit">Edit Tags</button>
+    <div id="bulk-tag-edit" style="display:none">
+      <form id="tag-remove">
+        <button id="btn-tag-remove" type="button">Remove Tag</button>
+        <select id="sel-tag-remove"></select>
+      </form>
+      <form id="tag-add">
+        <button id="btn-tag-add" type="button">Add Tag</button>
+        <select id="sel-tag-add"></select>
+        <input id="new-tag" disabled>
+      </form>
+    </div>
+  </div>
+{% endblock %}
 
 {% block content %}
   <div class="card">
-    <h1 class="site-title">{{ title }}</h1>
-    <p class="subtitle">link database management index</p>
-    <ul>
-      <li>
-        <a href="/dashapp/" class="link">timeline graph</a>
-      </li>
-      <li>
-        <a href="/import/" class="link">import data</a>
-      </li>
-    </ul>
-    <h4>Links visited in last {{ days(days_back) }}</h4>
-    <div id="bulk-edit" style="display:none">
-      <button type="button" id="load-tag-edit">Edit Tags</button>
-      <div id="bulk-tag-edit" style="display:none">
-        <form id="tag-remove">
-          <button id="btn-tag-remove" type="submit">Remove Tag</button>
-          <select id="sel-tag-remove"></select>
-        </form>
-        <form id="tag-add">
-          <button id="btn-tag-add" type="submit">Add Tag</button>
-          <select id="sel-tag-add"></select>
-          <input id="new-tag" disabled>
-        </form>
-      </div>
-    </div>
     <table>
       <tr>
         {% for name in columns %}
@@ -41,11 +28,11 @@
       </tr>
       {% for link in recent_links %}
         <tr>
-          <td class="select">
-            <input type="checkbox", name="link", value="{{ link.id }}">
-          </td>
           {% for cls, val in link.items() %}
             {% if cls == 'id' %}
+              <td class="select">
+                <input type="checkbox", name="link", value="{{ link.id }}">
+              </td>
             {% else %}
               <td class="{{ cls }}">
                 <a href=# title="{{ val }}" class="{{ cls }}"
@@ -53,12 +40,12 @@
               </td>
             {% endif %}
           {% endfor %}
-          <tr><td colspan=6>
-              <div class="desc" id="{{ link.id }}" style="display:none"
-                   data-showing="none"></div>
-          </td></tr>
         </tr>
-      {% endfor %}
+      <tr><td colspan=6>
+          <div class="desc" id="{{ link.id }}" style="display:none"
+               data-showing="none"></div>
+      </td></tr>
+    {% endfor %}
     </table>
     <div id='range-links'>
       View range:

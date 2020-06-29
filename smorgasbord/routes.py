@@ -28,8 +28,6 @@ def recent_link_visits():
         .filter(Visit.link_id==link_id)
         .order_by(db.desc(Visit.time)))
     result = '\n'.join([str(visit) for visit in recent_visits])
-    #print(link_id, days_back)
-    #print(list(recent_visits.all()))
     return json.dumps(dict(link_id=link_id, result=result))
 
 
@@ -41,8 +39,8 @@ def show_link_tags():
     for tag in link_tags:
         tag_str = tag.id
         while (tag.parent):
-            tag_str = tag_str + ' \u2194 ' + tag.parent.id
-            tag = tag.parent
+            tag_str = tag_str + ' \u2b95 ' + tag.parent
+            tag = Tag.query.filter_by(id=tag.parent).first()
         tag_strings.append(tag_str)
 
     result = '\n'.join(tag_strings)
@@ -59,7 +57,6 @@ def get_link_data(link_id):
 
 @app.route('/tag/<tag_id>', methods=['PUT'])
 def add_tag(tag_id):
-    #print(tag_id)
     if not tag_id == tag_id.strip().lower().replace(' ', '_'):
         return make_response('tag id must be lowercase with no spaces)', 400);
     tag = Tag(id=tag_id)
@@ -78,7 +75,7 @@ def add_tag_links():
         link.tags.append(tag)
         db.session.add(link)
     db.session.commit()
-    return make_response('ok', 200)
+    return make_response('success', 200)
 
 
 @app.route('/links/tags', methods=['DELETE'])
@@ -90,6 +87,7 @@ def remove_tag_links():
         link = Link.query.filter_by(id=link_id).first()
         link.tags.remove(tag)
     db.session.commit()
+    return make_response('success', 200)
 
 
 @app.route('/links/tags', methods=['GET'])

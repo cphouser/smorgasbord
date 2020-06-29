@@ -1,14 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 
+  {% macro days(count) %}
+    {% if count == 1 %} day
+    {% else %} {{ count }} days
+    {% endif %}
+  {% endmacro %}
+
   <head>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/css/styles.css') }}" />
-    <title>{{ title }}</title>
+    <title>smorgasbord: {{ title }}</title>
   </head>
 
   <body class="{{template}}">
-    <div class="container">
+    <div id="heading">
+      <div class="heading-block">
+        <h1>smorgasbord</h1>
+      </div>
+      <div class="heading-block">
+        <a href="/dashapp/" class="link">timeline graph</a>
+        <a href="/import/" class="link">import data</a>
+        <h4>Links visited in last {{ days(days_back) }}</h4>
+      </div>
+      <div class="heading-block">
+        {% block toolbox %}{% endblock %}
+      </div>
+    </div>
+    <div id="container">
       {% block content %}{% endblock %}
     </div>
     <script type=text/javascript src="{{ url_for('static', filename='dist/js/jquery.js') }}"></script>

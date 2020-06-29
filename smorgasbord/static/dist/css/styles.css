@@ -1,3 +1,30 @@
+.heading-block {
+    display: inline-block;
+    vertical-align: top;
+}
+
+.heading-block h1 {
+    margin: 0;
+}
+
+.heading-block h4 {
+    margin: 0;
+}
+
+#heading {
+    background-color: #fafafa;
+    position: fixed;
+    width: 100%;
+}
+
+#container {
+    padding-top: 6em;
+}
+
+.subtitle {
+    margin: 0;
+}
+
 .table-view table {
     width: 100%;
 }
@@ -17,7 +44,7 @@
 }
 
 .time {
-    width: 9em;
+    width: 11em;
 }
 
 .count {

@@ -68,8 +68,13 @@ class NetworkLayout:
 
 class TimeRange:
     def __init__(self, db_conn):
-        visit_df = pd.read_sql_query('select visit_ts from visits',
-                                     db_conn, parse_dates=['visit_ts'])
+        try:
+            visit_df = pd.read_sql_query('select visit_ts from visits',
+                                        db_conn, parse_dates=['visit_ts'])
+        except Exception as e:
+            self.marks = [datetime.min, datetime.min]
+            return
+
         self.start = visit_df['visit_ts'].min()
         self.end = datetime.combine((visit_df['visit_ts'].max()
                                      + timedelta(days=1)).date(), time.min)
@@ -196,25 +201,35 @@ def timeline_graph(dateRange, selected=None):
     date_1 = dateRange[1]
 
     connection = apsw.Connection(DATABASE)
-    if selected is not None:
-        node_type = selected['n_type']
-        if node_type == 'link':
-            visit_df = pd.read_sql_query(
-                'select link_id, visit_ts, visit_td, tag_id, title, url '
-                'from links join visits using (link_id) left join link_tags '
-                f'using (link_id) where visit_ts >= "{date_0}" and '
-                f'visit_ts <= "{date_1}" and link_id = "{selected["name"]}"',
-                connection, parse_dates=['visit_ts'],
-                index_col='visit_ts')
-        elif node_type == 'tag':
-            visit_df = pd.read_sql_query(
-                'select link_id, visit_ts, visit_td, tag_id, title, url '
-                'from links join visits using (link_id) left join link_tags '
-                f'using (link_id) where visit_ts >= "{date_0}" and '
-                f'visit_ts <= "{date_1}" and tag_id = "{selected["name"]}"',
-                connection, parse_dates=['visit_ts'],
-                index_col='visit_ts')
-        elif node_type == 'day':
+    try:
+        if selected is not None:
+            node_type = selected['n_type']
+            if node_type == 'link':
+                visit_df = pd.read_sql_query(
+                    'select link_id, visit_ts, visit_td, tag_id, title, url '
+                    'from links join visits using (link_id) left join link_tags '
+                    f'using (link_id) where visit_ts >= "{date_0}" and '
+                    f'visit_ts <= "{date_1}" and link_id = "{selected["name"]}"',
+                    connection, parse_dates=['visit_ts'],
+                    index_col='visit_ts')
+            elif node_type == 'tag':
+                visit_df = pd.read_sql_query(
+                    'select link_id, visit_ts, visit_td, tag_id, title, url '
+                    'from links join visits using (link_id) left join link_tags '
+                    f'using (link_id) where visit_ts >= "{date_0}" and '
+                    f'visit_ts <= "{date_1}" and tag_id = "{selected["name"]}"',
+                    connection, parse_dates=['visit_ts'],
+                    index_col='visit_ts')
+            elif node_type == 'day':
+                visit_df = pd.read_sql_query(
+                    'select link_id, visit_ts, visit_td, tag_id, title, url '
+                    'from links join visits using (link_id) left join link_tags '
+                    'using (link_id) where visit_ts >= '
+                    f'"{date_0}" and visit_ts <= "{date_1}"',
+                    connection, parse_dates=['visit_ts'],
+                    index_col='visit_ts')
+        else:
+            # Query for all visited links and associated tags in visit range
             visit_df = pd.read_sql_query(
                 'select link_id, visit_ts, visit_td, tag_id, title, url '
                 'from links join visits using (link_id) left join link_tags '
@@ -222,16 +237,10 @@ def timeline_graph(dateRange, selected=None):
                 f'"{date_0}" and visit_ts <= "{date_1}"',
                 connection, parse_dates=['visit_ts'],
                 index_col='visit_ts')
-    else:
-        # Query for all visited links and associated tags in visit range
-        visit_df = pd.read_sql_query(
-            'select link_id, visit_ts, visit_td, tag_id, title, url '
-            'from links join visits using (link_id) left join link_tags '
-            'using (link_id) where visit_ts >= '
-            f'"{date_0}" and visit_ts <= "{date_1}"',
-            connection, parse_dates=['visit_ts'],
-            index_col='visit_ts')
-    connection.close()
+            connection.close()
+    except Exception as e:
+        print(e)
+        return
 
     # find days of visits in dataframe
     visit_df['day'] = visit_df.apply(lambda row: row.name.date(), axis=1)
@@ -376,8 +385,11 @@ def create_dashboard(server):
     connection = apsw.Connection(DATABASE)
     timeRange = TimeRange(connection)
     connection.close()
-    sel_range=[timeRange.sliderDate(timeRange.rangeMax() - 1),
-               timeRange.sliderDate(timeRange.rangeMax())]
+    if timeRange is not None:
+        sel_range=[timeRange.sliderDate(timeRange.rangeMax() - 1),
+                timeRange.sliderDate(timeRange.rangeMax())]
+    else:
+        return
 
     # styles: for right side hover/click component
     styles = {'pre': {'border': 'thin lightgrey solid', 'overflowX': 'scroll'}}
@@ -437,6 +449,8 @@ def init_callbacks(dash_app):
         connection = apsw.Connection(DATABASE)
         timeRange = TimeRange(connection)
         connection.close()
+        if not timeRange:
+            return None
         sel_range=[timeRange.rangeMax() - 1, timeRange.rangeMax()]
         time_marks = timeRange.marksDict()
         return dcc.RangeSlider(id='time-range-slider', vertical=True, min=0,
