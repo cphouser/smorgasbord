@@ -21,6 +21,7 @@ Visiting the page =/recent= displays the most recently visited links along with 
 - Clicking the number of visits shows a list of timestamps for each visit along with their stored duration. 
 - Clicking the title of the link opens a menu for changing the title or adding a description.
 - Clicking the tags of each link opens a list of the tags along with the ancestors of each tag (each tag can be organized under a parent tag)
+- Hovering over a link title or url displays its full text.
 
 [[.docs/img/tag_menu.png]]
 Selecting any number of the checkboxes to the left of each link in either window opens a menu for bulk editing of links.
