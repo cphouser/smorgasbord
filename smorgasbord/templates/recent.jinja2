@@ -1,9 +1,9 @@
 {% extends "layout.jinja2" %}
 
-
 {% block toolbox %}
   <div class="toolbox" id="bulk-edit" style="display:none">
     <button type="button" id="load-tag-edit">Edit Tags</button>
+    <button type="button" id="remove-links">Delete Selected Links</button>
     <div id="bulk-tag-edit" style="display:none">
       <form id="tag-remove">
         <button id="btn-tag-remove" type="button">Remove Tag</button>
@@ -19,46 +19,44 @@
 {% endblock %}
 
 {% block content %}
-  <div class="card">
-    <table>
+  <table>
+    <tr>
+      {% for name in columns %}
+        <td class="colname">{{ name }}</td>
+      {% endfor %}
+    </tr>
+    {% for link in recent_links %}
       <tr>
-        {% for name in columns %}
-          <td class="colname">{{ name }}</td>
+        {% for cls, val in link.items() %}
+          {% if cls == 'id' %}
+            <td class="select">
+              <input type="checkbox", name="link", value="{{ link.id }}">
+            </td>
+          {% else %}
+            <td class="{{ cls }}">
+              <a href=# title="{{ val }}" class="{{ cls }}"
+                 data-link-id="{{ link.id }}">{{ val }}</a>
+            </td>
+          {% endif %}
         {% endfor %}
       </tr>
-      {% for link in recent_links %}
-        <tr>
-          {% for cls, val in link.items() %}
-            {% if cls == 'id' %}
-              <td class="select">
-                <input type="checkbox", name="link", value="{{ link.id }}">
-              </td>
-            {% else %}
-              <td class="{{ cls }}">
-                <a href=# title="{{ val }}" class="{{ cls }}"
-                   data-link-id="{{ link.id }}">{{ val }}</a>
-              </td>
-            {% endif %}
-          {% endfor %}
-        </tr>
-      <tr><td colspan=6>
-          <div class="desc" id="{{ link.id }}" style="display:none"
-               data-showing="none"></div>
-      </td></tr>
+    <tr><td colspan=6>
+        <div class="desc" id="{{ link.id }}" style="display:none"
+             data-showing="none"></div>
+    </td></tr>
+  {% endfor %}
+  </table>
+  <div id='range-links'>
+    View range:
+    {% for time_win in [1,3,7,15,30,60,120] %}
+      {% if time_win == days_back %}
+        <span id="day-range">{{ time_win }}</span>
+      {% else %}
+        <a href='?days={{ time_win }}'>{{ time_win }}</a>
+      {% endif %}
+      {% if not loop.last %}, {% endif %} 
     {% endfor %}
-    </table>
-    <div id='range-links'>
-      View range:
-      {% for time_win in [1,3,7,15,30,60,120] %}
-        {% if time_win == days_back %}
-          <span id="day-range">{{ time_win }}</span>
-        {% else %}
-          <a href='?days={{ time_win }}'>{{ time_win }}</a>
-        {% endif %}
-        {% if not loop.last %}, {% endif %} 
-      {% endfor %}
-      Days
-    </div>
-
+    Days
   </div>
+
 {% endblock %}

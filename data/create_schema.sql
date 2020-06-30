@@ -39,6 +39,8 @@ create table if not exists windows(
 create table if not exists window_links(
        link_id text not null,
        win_id text not null,
+       url text not null,
+       title text not null,
        visit_ts text not null,
        visit_td text not null,
        foreign key (win_id) references windows(win_id)

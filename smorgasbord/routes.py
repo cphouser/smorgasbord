@@ -14,8 +14,7 @@ def home():
     """Landing page."""
     return render_template('index.jinja2',
                            title='smorgasbord',
-                           description='management index',
-                           template='home-template')
+                           subtitle='management index')
 
 
 @app.route('/recent/visits')
@@ -55,6 +54,14 @@ def get_link_data(link_id):
                            parent=link.parent))
 
 
+@app.route('/link/<link_id>', methods=['DELETE'])
+def remove_link(link_id):
+    link = Link.query.filter_by(id=link_id).first()
+    db.session.delete(link)
+    db.session.commit()
+    return make_response('success', 200)
+
+
 @app.route('/tag/<tag_id>', methods=['PUT'])
 def add_tag(tag_id):
     if not tag_id == tag_id.strip().lower().replace(' ', '_'):
@@ -72,6 +79,12 @@ def add_tag_links():
     tag = Tag.query.filter_by(id=tag_id).first()
     for link_id in link_ids:
         link = Link.query.filter_by(id=link_id).first()
+        if link is None:
+            wl = WindowLinks.query.filter_by(link_id=link_id).first()
+            if wl is None:
+                continue
+            link = Link(id=link_id, title=wl.title, url=wl.url)
+            db.session.add(link)
         link.tags.append(tag)
         db.session.add(link)
     db.session.commit()
@@ -93,10 +106,15 @@ def remove_tag_links():
 @app.route('/links/tags', methods=['GET'])
 def show_tag_intersection():
     link_ids = json.loads(request.args.get('link_ids'))
-    link_tags = set(Link.query.filter_by(id=link_ids.pop()).first().tags)
+    first_id = Link.query.filter_by(id=link_ids.pop()).first()
+    if not first_id:
+        return json.dumps(dict(tags=[]))
+    link_tags = set(first_id.tags)
     for link_id in link_ids:
-        link_tags = link_tags.intersection(set(
-            Link.query.filter_by(id=link_id).first().tags))
+        link = Link.query.filter_by(id=link_id).first()
+        if not link:
+            return json.dumps(dict(tags=[]))
+        link_tags = link_tags.intersection(set(link.tags))
     result = [tag.id for tag in link_tags]
     return json.dumps(dict(tags=result))
 
@@ -127,10 +145,10 @@ def list_tags_tree():
     return json.dumps(dict(tags=tag_list))
 
 
-@app.route('/recent')
+@app.route('/recent/')
 def show_recent_links():
     days_back = request.args.get('days', default=30, type=int)
-    day_str = 'day' if days_back == 1 else str(days_back) + 'days'
+    day_str = 'day' if days_back == 1 else str(days_back) + ' days'
     time_range = datetime.now() - timedelta(days=days_back)
     recent_visits = (db.session.query(
         db.func.max(Visit.time), Link, db.func.count('*'))
@@ -146,9 +164,37 @@ def show_recent_links():
         link_table.append(row)
     columns = ['Select', 'Last Visit', '#Visits', 'Title', 'URL', 'Tags']
     return render_template('recent.jinja2',
-                           title='smorgasbord',
-                           description='recently visited links',
+                           title='recent visits',
                            columns=columns,
                            recent_links=link_table,
                            days_back=days_back,
-                           template='table-view')
+                           subtitle='Links visited in last '+day_str)
+
+
+@app.route('/active/')
+def show_active():
+    windows = Window.query.all()
+    print(windows)
+    win_tables = {}
+    for window in windows:
+        links = window.links
+        devices = ', '.join([device.id for device in window.devices])
+        link_list = []
+        for link in links:
+            linkitem = Link.query.filter_by(id=link.link_id).first()
+            if linkitem:
+                tag_strs = [tag.id for tag in linkitem.tags]
+                tags = ' ,'.join(tag_strs) if tag_strs else 'UNTAGGED'
+            else:
+                tags = ''
+            link_list.append(dict(id=link.link_id, time=link.time,
+                                  url=link.url, duration=link.duration,
+                                  title=link.title, tags=tags))
+        win_tables[window.id] = dict(count=len(links), devices=devices,
+                                     links=link_list)
+    columns = ['Select', 'Opened Since', 'Opened For', 'Title', 'URL', 'Tags']
+    return render_template('active.jinja2',
+                           title='active windows',
+                           columns=columns,
+                           windows=win_tables,
+                           subtitle='Links currently opened')

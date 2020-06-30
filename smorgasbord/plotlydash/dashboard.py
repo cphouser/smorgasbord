@@ -395,7 +395,15 @@ def create_dashboard(server):
     styles = {'pre': {'border': 'thin lightgrey solid', 'overflowX': 'scroll'}}
 
     dash_app.layout = html.Div([
-        html.Div([html.H1("smorgasbord")], className="row"),
+        html.Div([html.H1("smorgasbord", className='three columns'),
+                  html.Div([
+                      html.A('timeline graph', href='/dashapp/'),
+                      html.Br(),
+                      html.A('recent visits', href='/recent/'),
+                      html.Br(),
+                      html.A('active windows', href='/active/')
+                  ], className='three columns')
+        ], className="row"),
         html.Div(className="row",
             children=[
                 html.Div(

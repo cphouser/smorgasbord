@@ -1,0 +1,72 @@
+{% extends "layout.jinja2" %}
+
+
+{% block toolbox %}
+  <div class="toolbox" id="bulk-edit" style="display:none">
+    <button type="button" id="load-tag-edit">Edit Tags</button>
+    <button type="button" id="remove-links">Delete Selected Links</button>
+    <div id="bulk-tag-edit" style="display:none">
+      <form id="tag-remove">
+        <button id="btn-tag-remove" type="button">Remove Tag</button>
+        <select id="sel-tag-remove"></select>
+      </form>
+      <form id="tag-add">
+        <button id="btn-tag-add" type="button">Add Tag</button>
+        <select id="sel-tag-add"></select>
+        <input id="new-tag" disabled>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="card">
+    {% for win_id, window in windows.items() %}
+      <b>Window:</b> {{ win_id }} ({{ window.count }} tabs)
+      <b>Devices:</b> {{ window.devices }} 
+      <table>
+        <tr>
+          {% for name in columns %}
+            <td class="colname">{{ name }}</td>
+          {% endfor %}
+        </tr>
+        {% for link in window.links %}
+          <tr>
+            <td class="select">
+              <input type="checkbox", name="link", value="{{ link.id }}">
+            </td>
+            <td class="time">
+              {{ link.time }}
+            </td>
+            <td class="duration">
+              {{ link.duration }}
+            </td>
+            <td class="title">
+              <a href=# class="title" data-link-id="{{ link.id }}" title="{{ link.title }}">
+                {{ link.title }}
+              </a>
+            </td>
+            <td class="url">
+              <a href=# class="url" data-link-id="{{ link.id }}" title="{{ link.url }}">
+                {{ link.url }}
+              </a>
+            </td>
+            <td class="tags">
+              {% if not link.tags %}
+                Not Stored
+              {% else %}
+                <a href=# class="tags" data-link-id="{{ link.id }}">
+                  {{ link.tags }}
+                </a>
+              {% endif %}
+            </td>
+          </tr>
+        <tr><td colspan=6>
+            <div class="desc" id="{{ link.id }}" style="display:none"
+                 data-showing="none"></div>
+        </td></tr>
+      {% endfor %}
+      </table>
+    {% endfor %}
+  </div>
+{% endblock %}

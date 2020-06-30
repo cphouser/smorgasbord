@@ -1,11 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 
-  {% macro days(count) %}
-    {% if count == 1 %} day
-    {% else %} {{ count }} days
-    {% endif %}
-  {% endmacro %}
 
   <head>
     <meta charset="utf-8" />
@@ -20,8 +15,9 @@
       </div>
       <div class="heading-block">
         <a href="/dashapp/" class="link">timeline graph</a>
-        <a href="/import/" class="link">import data</a>
-        <h4>Links visited in last {{ days(days_back) }}</h4>
+        <a href="/recent/" class="link">recent visits</a>
+        <a href="/active/" class="link">active windows</a>
+        <h4>{{ subtitle }}</h4>
       </div>
       <div class="heading-block">
         {% block toolbox %}{% endblock %}

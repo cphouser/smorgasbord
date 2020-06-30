@@ -23,6 +23,7 @@ class Link(db.Model):
     parent = db.Column('parent', db.String(), db.ForeignKey('links.link_id'))
     tags = db.relationship('Tag', secondary=link_tags, lazy='subquery',
                            backref=db.backref('links', lazy=True))
+    visits = db.relationship('Visit', cascade='save-update, merge, delete')
 
 
 class Visit(db.Model):
@@ -72,6 +73,8 @@ class WindowLinks(db.Model):
                        primary_key=True)
     link_id = db.Column('link_id', db.String(), nullable=False,
                         primary_key=True)
+    title = db.Column('title', db.String(), nullable=False)
+    url = db.Column('url', db.String(), nullable=False)
     time = db.Column('visit_ts', db.String(), nullable=False, primary_key=True)
     duration = db.Column('visit_td', db.String(), nullable=False)
 
@@ -83,6 +86,7 @@ class Window(db.Model):
 
     bid = db.Column('browser_id', db.Integer)
     id = db.Column('win_id', db.String(), primary_key=True)
+    links = db.relationship('WindowLinks')
 
 class Device(db.Model):
 

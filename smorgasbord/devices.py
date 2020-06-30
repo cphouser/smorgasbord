@@ -52,11 +52,8 @@ def add_windowlink(win_id, link_id, title, url, last_access):
     initializes duration to 0 and time to last access.
     """
     time_str = last_access.strftime('%Y-%m-%d %H:%M:%S')
-    wl = WindowLinks(win_id=win_id, link_id=link_id, time=time_str,
-                        duration='0:00:00:00')
-    if not Link.query.filter_by(id=link_id).first():
-        link = Link(id=link_id, url=url, title=title)
-        db.session.add(link)
+    wl = WindowLinks(win_id=win_id, link_id=link_id, time=time_str, url=url,
+                     title=title, duration='0:00:00:00')
     db.session.add(wl)
     db.session.commit()
 
@@ -78,11 +75,12 @@ def remove_windowlink(win_link):
     """
     removes link from window_links and adds corresponding entry to visits.
     """
-    print(win_link.duration, to_seconds(win_link.duration))
-    visit = Visit(link_id=win_link.link_id, time=win_link.time,
-                  duration=(win_link.duration
-                            if to_seconds(win_link.duration) else None))
-    db.session.add(visit)
+    #print(win_link.duration, to_seconds(win_link.duration))
+    if Link.query.filter_by(id=win_link.link_id):
+        visit = Visit(link_id=win_link.link_id, time=win_link.time,
+                      duration=(win_link.duration
+                                if to_seconds(win_link.duration) else None))
+        db.session.add(visit)
     db.session.delete(win_link)
     db.session.commit()
 
