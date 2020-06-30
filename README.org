@@ -16,19 +16,19 @@ The browser extension (currently tested on Mozilla Firefox 68.9.0esr) is a simpl
 [[./docs/img/active.png]]
 The flask server maintains an internal representation of the browser state, displayed on the =/active= page. Links are saved to the database as they are assigned tags from this page. For any saved link, a record of each visit with the time and active duration is saved when the given tab is closed or the link changes.
 
-[[.docs/img/recent.png]]
+[[./docs/img/recent.png]]
 Visiting the page =/recent= displays the most recently visited links along with the number of visits within the specified timeframe to the particular link. 
 - Clicking the number of visits shows a list of timestamps for each visit along with their stored duration. 
 - Clicking the title of the link opens a menu for changing the title or adding a description.
 - Clicking the tags of each link opens a list of the tags along with the ancestors of each tag (each tag can be organized under a parent tag)
 - Hovering over a link title or url displays its full text.
 
-[[.docs/img/tag_menu.png]]
+[[./docs/img/tag_menu.png]]
 Selecting any number of the checkboxes to the left of each link in either window opens a menu for bulk editing of links.
 - Tags can be added or removed to a group of links.
 - Links can be removed from storage (unsaved) as a group.
 
-[[.docs/img/graph.png]]
+[[./docs/img/graph.png]]
 Visiting the page =/dashapp= displays a variable range of the stored browsing data as a network graph. Each node on the left of the graph represents a day of browsing and connects to each link node which was visited on that day. The link nodes (center) connect to each tag node they are associated with on the right of the graph. 
 - Clicking a link node displays only the visits and tags for that link. 
 - Clicking a tag node displays only the associated links and tags for that tag.
