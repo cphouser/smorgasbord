@@ -4,7 +4,7 @@
 * Smorgasbord
 This document is at this point primarily a project description. As a setup procedure is formalized, instructions for setup and use will be added.
 
-A utility for organizing, cataloging, and visualizing web browsing. Smorgasbord tracks the current state of all active browser and saves each link and associated visit on its (internal) database. On the *Recent Activity* page, each visited link can be tagged and assigned a description. On the *Timeline Graph* page, saved links, tags, and the visits to them can be visualized in a network graph. Runs on a Flask Server.
+A utility for organizing, cataloging, and visualizing web browsing. Smorgasbord tracks the current state of all active browser and can save each link and associated visit to its database. On the *Active Windows* page, each visited link can be tagged and saved. Once a link is tagged each visit is saved and visible on the *Recent Visits* page. On the *Timeline Graph* page, saved links, tags, and the visits to them can be visualized in a network graph. Runs on a Flask Server.
 
 ** Components
 Smorgasbord consists of two primary components:
