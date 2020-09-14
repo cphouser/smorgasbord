@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="extension.css"/>
+    </head>
+
+    <body>
+        <div id="content-field">
+            <div id="saved-link" class="hidden-menu">
+                <div id="link-summary"></div>
+                <div id="edit-link-data">edit link data</div>
+                <div id="edit-link-tags">edit link tags</div>
+                <button id="btn-link-data" type="button">Link Data</button>
+                <button id="btn-link-tags" type="button">Link Tags</button><br>
+            </div>
+            <div id="unsaved-link" class="hidden-menu">
+                <input id="link-title"><br>
+                <div id="link-url"></div>
+                <div id="link-id"></div>
+                <div class="autocomplete">
+                    <input id="tag-add" autofocus>
+                </div>
+                <button id="btn-tag-add" type="button">Add Tag and Save</button>
+                <br>
+                <select id="link-add"></select>
+                <button id="btn-link-add" type="button">Add Link as Child</button><br>
+            </div>
+            <div id="new-tag" class="hidden-menu">
+                tag id: <input id="inp-tag-new">
+                parent: <div class="autocomplete"><input id="parent-add"></div>
+                description: <input id="inp-tag-desc-add">
+                <button id="btn-tag-new" type="button">Create New Tag</button>
+            </div>
+            <div id="server-name" class="hidden-menu">
+                <h4 id="old-server-url"></h4>
+                server url: <input id="new-server-url">
+                <h4 id="server-ping-result"></h4>
+                <button id="ping-server" type="button">Test Server Url</button>
+                <button id="save-server" type="button">Save Server Url</button>
+            </div>
+            <div id="menu">
+                <button id="new-tag-start" class="menu-button">New Tag</button>
+                <button id="server-name-start" class="menu-button">Edit Server URL</button>
+            </div>
+        </div>
+        <script src="page_action.js"></script>
+    </body>
+
+</html>

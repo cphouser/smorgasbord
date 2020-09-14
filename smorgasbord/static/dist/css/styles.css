@@ -11,6 +11,8 @@
     margin: 0;
 }
 
+.hidden {display: none;}
+
 #heading {
     background-color: #fafafa;
     position: fixed;

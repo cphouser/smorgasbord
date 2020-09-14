@@ -19,6 +19,18 @@ def home():
 
 @app.route('/recent/visits')
 def recent_link_visits():
+    """retrieve dates of all visits to a link in the specified days.
+
+    Args:
+        link_id: the link_id to retrieve visits for.
+        days_back: the number of days back to look.
+
+    Returns:
+        A serialized dict containing the link_id and associated result.
+
+        link_id: the link_id for the retrieved visits.
+        result: a newline separated list of visit timestamps.
+    """
     link_id = request.args.get('link_id', type=str)
     days_back = request.args.get('days_back', type=int)
     time_range = datetime.now() - timedelta(days=days_back)
@@ -30,8 +42,54 @@ def recent_link_visits():
     return json.dumps(dict(link_id=link_id, result=result))
 
 
+@app.route('/link')
+def find_url():
+    link_url = request.args.get('url', type=str)
+    link_id = smorgasbord.link_id(link_url)
+    if Link.query.filter_by(id=link_id).first() is None:
+        #check matches
+        status = 'unsaved'
+    else:
+        status = 'saved'
+    return json.dumps(dict(link_id=link_id, status=status))
+
+
+@app.route('/link', methods=['POST'])
+def add_url():
+    data = json.loads(request.data)
+    link_url = data.get('url')
+    link_id = smorgasbord.link_id(link_url)
+    if Link.query.filter_by(id=link_id).first() is not None:
+        return make_response('Link Already Exists', 409);
+
+    tag = Tag.query.filter_by(id=data.get('tag')).first()
+    if tag is None:
+        return make_response('Tag Does Not Exist', 404);
+
+    link = Link(id=link_id, title=data.get('title'), url=link_url)
+    link.tags.append(tag)
+    db.session.add(link)
+    db.session.commit()
+    return json.dumps(dict(link_id=link_id)), 201
+
+
 @app.route('/link/tags')
 def show_link_tags():
+    """Retrieve a list of all tags associated with a specified link.
+
+    If a tag has a parent tag, return the tag concatenated with a list
+    of its ancestors, separated by an arrow character.
+
+    Args:
+        link_id: the link_id to find tags for.
+        format: whether for format the result as a string
+
+    Returns:
+        A serialized dict containing the link_id and associated result.
+
+        link_id: the link_id for the returned tag list
+        result: a list of the tags the link_id is associated with.
+    """
     link_id = request.args.get('link_id', type=str)
     link_tags = Link.query.filter_by(id=link_id).first().tags
     tag_strings = []
@@ -41,21 +99,46 @@ def show_link_tags():
             tag_str = tag_str + ' \u2b95 ' + tag.parent
             tag = Tag.query.filter_by(id=tag.parent).first()
         tag_strings.append(tag_str)
-
-    result = '\n'.join(tag_strings)
+    if request.args.get('format', type=bool):
+        result = '\n'.join(tag_strings)
+    else:
+        result = {t.id: s for t, s in zip(link_tags, tag_strings)}
     return json.dumps(dict(link_id=link_id, result=result))
 
 
 @app.route('/link/<link_id>', methods=['GET'])
 def get_link_data(link_id):
+    """Retrieve every property of the specified link_id
+
+    Args:
+        link_id: the link_id to find tags for.
+
+    Returns:
+        A serialized dict containing the link_id and associated result.
+
+        link_id: the link_id for the returned data.
+        title: the link title.
+        url: the link url.
+        desc: the link description.
+        match: the associated match string for the link.
+        parent: the parent link_id for the link.
+    """
     link = Link.query.filter_by(id=link_id).first()
     return json.dumps(dict(link_id=link_id, title=link.title,
-                           desc=link.description, match=link.match,
-                           parent=link.parent))
+                           url=link.url, desc=link.description,
+                           match=link.match, parent=link.parent))
 
 
 @app.route('/link/<link_id>', methods=['DELETE'])
 def remove_link(link_id):
+    """delete the specified link_id from the database.
+
+    Args:
+        link_id: the link_id to remove.
+
+    Returns:
+        An HTTP success response.
+    """
     link = Link.query.filter_by(id=link_id).first()
     db.session.delete(link)
     db.session.commit()
@@ -64,9 +147,31 @@ def remove_link(link_id):
 
 @app.route('/tag/<tag_id>', methods=['PUT'])
 def add_tag(tag_id):
+    """Add the specified tag to the database.
+
+    The format for tag ids should be lowercase ASCII without spaces.
+
+    Args:
+        tag_id: the tag to add.
+        an optional JSON body with a parent tag id and/or a tag description
+
+    Returns:
+        An HTTP success response.
+    """
     if not tag_id == tag_id.strip().lower().replace(' ', '_'):
-        return make_response('tag id must be lowercase with no spaces)', 400);
+        return make_response('tag id must be lowercase with no spaces', 400);
     tag = Tag(id=tag_id)
+    data = json.loads(request.data)
+    parent_id = data.get('parent')
+    if parent_id:
+        if not Tag.query.filter_by(id=parent_id).first():
+            return make_response('parent tag id is not valid', 400);
+        tag.parent = parent_id
+
+    tag_desc = data.get('desc')
+    if tag_desc:
+        tag.description = tag_desc
+
     db.session.add(tag)
     db.session.commit()
     return make_response('success', 200)
@@ -74,6 +179,20 @@ def add_tag(tag_id):
 
 @app.route('/links/tags', methods=['POST'])
 def add_tag_links():
+    """Add a connection for each link to the specified tag.
+
+    links and tag must already be in database. If the specified tag is not
+    found the action fails. If a specified link is not found in the saved or
+    active links the entry is skipped silently. If a link is only found in the
+    set of active links it is saved.
+
+    Args:
+        tag_id: the tag to add a connection to.
+        link_ids: a list of link ids to connect to the tag.
+
+    Returns:
+        An HTTP success response.
+    """
     link_ids = json.loads(request.form.get('link_ids'))
     tag_id = request.form.get('tag')
     tag = Tag.query.filter_by(id=tag_id).first()
@@ -93,6 +212,17 @@ def add_tag_links():
 
 @app.route('/links/tags', methods=['DELETE'])
 def remove_tag_links():
+    """removes a connection for each link to the specified tag.
+
+    Links and tag must already be in database. If the specified tag
+    or any link is not found the action fails.
+
+    Args:
+        tag_id: the tag to remove a connection to.
+
+    Returns:
+        An HTTP success response.
+    """
     tag_id = request.form.get('tag')
     link_ids = json.loads(request.form.get('link_ids'))
     tag = Tag.query.filter_by(id=tag_id).first()

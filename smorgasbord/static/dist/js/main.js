@@ -45,6 +45,7 @@ $(function() {
         if ($.togg_link_pane(link_id, 'tags'))
         $.getJSON('/link/tags', {
             link_id: link_id,
+            format: true
         }, function(data) {
             var pre = $('<pre></pre>').text(data.result);
             $('div#'+link_id).html(pre);

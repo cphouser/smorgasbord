@@ -1,5 +1,6 @@
 
 var device_id = 'default_device';
+var SERVER_NAME = 'http://127.0.0.1:5000/';
 
 function pageChange(requestDetails) {
     console.log("page change");
@@ -16,7 +17,7 @@ function onError(error) {
 
 function storeWindows(currentWindows) {
     console.log(currentWindows);
-    fetch('http://127.0.0.1:5000/devices/'+device_id, {
+    fetch(SERVER_NAME+'devices/'+device_id, {
     method: 'PUT',
     body: JSON.stringify(currentWindows),
     })
