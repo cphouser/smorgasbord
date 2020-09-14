@@ -16,6 +16,11 @@ def home():
                            title='smorgasbord',
                            subtitle='management index')
 
+@app.route('/smorgasbord')
+def awake():
+    return json.dumps({'status': 'online',
+                       'version': '0.1',
+                       'time': str(datetime.now())}), 200
 
 @app.route('/recent/visits')
 def recent_link_visits():

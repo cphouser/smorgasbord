@@ -1,33 +1,5 @@
 
 
-function onError(error) {
-    var err_blk = document.createElement('div');
-    err_blk.className = 'error';
-    err_blk.innerHTML = error;
-    document.getElementById('content-field').appendChild(err_blk);
-}
-
-function tabFind(tab_arr) {
-    var request_url = new URL(SERVER_NAME+'link');
-    request_url.searchParams.append('url', encodeURI(tab_arr[0].url));
-    fetch(request_url, {
-        method: 'GET',
-    }).then(response => response.json())
-    .then(result => {
-        document.getElementById('link-id').innerHTML = result.link_id;
-        switch(result.status) {
-        case 'unsaved':
-            showMenu('unsaved-link');
-            saveLink(result.link_id, tab_arr[0].url, tab_arr[0].title);
-            break;
-        case 'saved':
-            showMenu('saved-link');
-            editLink(result.link_id);
-            break;
-        }
-    }).catch(onError);
-}
-
 function autocomplete(inp, arr) {
     var current_focus;
     inp.addEventListener("input", function(e) {
@@ -127,66 +99,56 @@ function showMenu(menu_id) {
     for (var i = 0; i < hidden_menus.length; i++)
         hidden_menus[i].style.display = 'none';
     document.getElementById(menu_id).style.display = 'block';
+    var menu_buttons = document.getElementsByClassName('menu-button');
+    for (var i = 0; i < menu_buttons.length; i++) {
+        if (menu_buttons[i].id == menu_id + '-start')
+            menu_buttons[i].disabled = true;
+        else
+            menu_buttons[i].disabled = false;
+    }
 }
 
-function saveLink(link_id, link_url, link_title) {
-    document.getElementById('link-title').setAttribute('value', link_title);
-    document.getElementById('link-url').innerHTML = link_url;
-    document.getElementById('link-id').innerHTML = link_id;
-    fetch(SERVER_NAME+'tags/list', {method: 'GET'}).then(response => response.json())
-        .then(result => {
-            autocomplete(document.getElementById('tag-add'), result.tags);
-        }).catch(onError);
-    document.getElementById('btn-tag-add').addEventListener('click', function(e) {
-        var tag = document.getElementById('tag-add').value;
-        var title = document.getElementById('link-title').value;
-        fetch(SERVER_NAME+'link', {method: 'POST',
-                                   headers: {'Content-Type': 'application/json'},
-                                   body: JSON.stringify({
-                                       url: link_url,
-                                       title: title,
-                                       tag: tag,
-                                   })}).then(response => response.json())
-            .then(onError).catch(onError);
-    });
-    //get related links for link relation selector
+function disableMenu(buttons) {
+    for (var i = 0; i < buttons.length; i++) {
+        buttons[i].disabled = true;
+    }
 }
 
-function editLink(link_id) {
-    fetch(SERVER_NAME+'link/'+link_id,
-          {method: 'GET'}).then(response => response.json())
-        .then(link_data => {
-            var request_url = new URL(SERVER_NAME+'link/tags');
-            request_url.searchParams.append('link_id', link_id);
-            fetch(request_url, {method: 'GET'}).then(response => response.json())
-                .then(tag_data => {
-                    document.getElementById('link-summary').appendChild(
-                        linkSummary(link_data, tag_data.result));
-                }).catch(onError);
-        }).catch(onError);
-}
-
-function editServer(server_url) {
+function editServer(server_url, device_id) {
     showMenu('server-name');
-    document.getElementById('old-server-url').innerHTML = server_url;
+    document.getElementById('old-server-url'
+                           ).innerHTML = 'current server url: ' + server_url;
     document.getElementById('new-server-url').value = server_url;
+    document.getElementById('old-device-id'
+                           ).innerHTML = 'current device id: ' + device_id;
+    document.getElementById('new-device-id').value = device_id;
+    document.getElementById('save-server').addEventListener('click', function(e) {
+        var new_name = document.getElementById('new-server-url').value;
+        var new_dev_id = document.getElementById('new-device-id').value;
+        if (!new_name) new_name = server_url;
+        if (!new_dev_id) new_dev_id = device_id;
+        browser.storage.local.set({'server_name': new_name, 'device_id': new_dev_id})
+            .then(window.close()).catch(initError);
+
+    });
+    document.getElementById('ping-server').addEventListener('click', function(e) {
+        var new_name = document.getElementById('new-server-url').value;
+        if (new_name) {
+            checkServer(new_name, document.getElementById('server-ping-result'));
+        }
+    });
 }
 
-function newTag() {
-    showMenu('new-tag');
-    fetch(SERVER_NAME+'tags/list', {method: 'GET'}).then(response => response.json())
-        .then(result => {
-            autocomplete(document.getElementById('parent-add'), result.tags);
-        }).catch(onError);
-    document.getElementById('btn-tag-new').addEventListener('click', function(e) {
-        var new_id = document.getElementById('inp-tag-new').value;
-        var parent_id = document.getElementById('parent-add').value;
-        var tag_desc = document.getElementById('inp-tag-desc-add').value;
-        fetch(SERVER_NAME+'tag/'+new_id, {
-            method: 'PUT',
-            body: JSON.stringify({parent: parent_id, desc: tag_desc})
-        }).then(response => response.json()).then(result => {}).catch(onError);
-    });
+function checkServer(server_name, return_elem) {
+    var found = fetch(server_name + 'smorgasbord', {method: 'GET'}).then(
+        response => response.json()).then(result => {
+                if (return_elem) return_elem.innerHTML = JSON.stringify(result);
+                return (result.status == 'online');
+            }).catch(error => {
+                if (return_elem) return_elem.innerHTML = error;
+                return false;
+            });
+    return found;
 }
 
 function linkSummary(link_data, tag_data) {
@@ -219,15 +181,121 @@ function linkSummary(link_data, tag_data) {
     return summary_div;
 }
 
-var SERVER_NAME = 'http://127.0.0.1:5000/';
+function initPage(server_name, device_id) {
+    function saveLink(link_id, link_url, link_title) {
+        document.getElementById('link-title').setAttribute('value', link_title);
+        document.getElementById('link-url').innerHTML = link_url;
+        document.getElementById('link-id').innerHTML = link_id;
+        fetch(server_name+'tags/list', {method: 'GET'}).then(response => response.json())
+            .then(result => {
+                autocomplete(document.getElementById('tag-add'), result.tags);
+            }).catch(onError);
+        document.getElementById('btn-tag-add').addEventListener('click', function(e) {
+            var tag = document.getElementById('tag-add').value;
+            var title = document.getElementById('link-title').value;
+            fetch(server_name+'link', {method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify({
+                                        url: link_url,
+                                        title: title,
+                                        tag: tag,
+                                    })}).then(response => response.json())
+                .then(onError).catch(onError);
+        });
+        //get related links for link relation selector
+    }
 
-document.getElementById('server-name-start').addEventListener("click", function(e) {
-    editServer(SERVER_NAME);
-});
+    function editLink(link_id) {
+        fetch(server_name+'link/'+link_id,
+              {method: 'GET'}).then(response => response.json())
+            .then(link_data => {
+                var request_url = new URL(server_name+'link/tags');
+                request_url.searchParams.append('link_id', link_id);
+                fetch(request_url, {method: 'GET'}).then(response => response.json())
+                    .then(tag_data => {
+                        document.getElementById('link-summary').appendChild(
+                            linkSummary(link_data, tag_data.result));
+                    }).catch(onError);
+            }).catch(onError);
+    }
 
-document.getElementById('new-tag-start').addEventListener("click", function(e) {
-    newTag(SERVER_NAME);
-});
+    function tabFind(tab_arr) {
+        var request_url = new URL(server_name+'link');
+        request_url.searchParams.append('url', encodeURI(tab_arr[0].url));
+        fetch(request_url, {
+            method: 'GET',
+        }).then(response => response.json())
+            .then(result => {
+                document.getElementById('link-id').innerHTML = result.link_id;
+                switch(result.status) {
+                case 'unsaved':
+                    showMenu('unsaved-link');
+                    saveLink(result.link_id, tab_arr[0].url, tab_arr[0].title);
+                    break;
+                case 'saved':
+                    showMenu('saved-link');
+                    editLink(result.link_id);
+                    break;
+                }
+            }).catch(onError);
+    }
 
-let tab_query = browser.tabs.query({currentWindow: true, active: true});
-tab_query.then(tabFind, onError);
+    function newTag() {
+        showMenu('new-tag');
+        fetch(server_name+'tags/list', {method: 'GET'}).then(response => response.json())
+            .then(result => {
+                autocomplete(document.getElementById('parent-add'), result.tags);
+            }).catch(onError);
+        document.getElementById('btn-tag-new').addEventListener('click', function(e) {
+            var new_id = document.getElementById('inp-tag-new').value;
+            var parent_id = document.getElementById('parent-add').value;
+            var tag_desc = document.getElementById('inp-tag-desc-add').value;
+            fetch(server_name+'tag/'+new_id, {
+                method: 'PUT',
+                body: JSON.stringify({parent: parent_id, desc: tag_desc})
+            }).then(response => response.json()).then(result => {}).catch(onError);
+        });
+    }
+
+    checkServer(server_name, document.getElementById('server-ping-result')).then(
+        result => {
+            if (!result)
+                throw "couldn't connect to server";
+
+            document.getElementById('server-name-start')
+                .addEventListener("click", e => editServer(server_name, device_id));
+
+            document.getElementById('new-tag-start').
+                addEventListener("click", newTag);
+
+            let tab_query = browser.tabs.query({currentWindow: true, active: true});
+            tab_query.then(tabFind, onError);
+        }).catch(
+            error => {
+                editServer(server_name, device_id);
+                initError(error);
+            });
+}
+
+function onError(error) {
+    var err_blk = document.createElement('div');
+    err_blk.className = 'error';
+    err_blk.innerHTML = error;
+    document.getElementById('content-field').appendChild(err_blk);
+}
+
+function initError(error) {
+    disableMenu(document.getElementsByClassName('menu-button'));
+    showMenu('server-name');
+    if (error) onError(error);
+}
+
+browser.storage.local.get(['server_name', 'device_id']).then(result => {
+    var server_name = result.server_name;
+    var device_id = result.device_id;
+    if (server_name && device_id) {
+        initPage(server_name, device_id);
+    } else initError('invalid server settings: '
+                     + JSON.stringify({'server_name': server_name,
+                                       'device_id': device_id}));
+}).catch(initError);
