@@ -199,7 +199,6 @@ def timeline_graph(dateRange, selected=None):
 
     date_0 = dateRange[0]
     date_1 = dateRange[1]
-
     connection = apsw.Connection(DATABASE)
     try:
         if selected is not None:
@@ -239,8 +238,8 @@ def timeline_graph(dateRange, selected=None):
                 index_col='visit_ts')
             connection.close()
     except Exception as e:
-        print(e)
-        return
+        print('db retrieval error:', e)
+        return dict(data=None,layout=go.Layout())
 
     # find days of visits in dataframe
     visit_df['day'] = visit_df.apply(lambda row: row.name.date(), axis=1)
