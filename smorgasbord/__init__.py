@@ -17,6 +17,7 @@ def create_app():
         #import core flask app
         from . import routes
         from . import smorgasbord
+        from . import message
         #from .assets import compile_static_assets
 
         # db.create_all()

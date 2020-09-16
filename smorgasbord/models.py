@@ -94,6 +94,7 @@ class Device(db.Model):
     __table_args__ = {'extend_existing': True}
 
     id = db.Column('dev_id', db.String(), primary_key=True)
+    message = db.Column('message', db.String())
     windows = db.relationship('Window', secondary=device_windows,
                               lazy='subquery', backref=db.backref('devices',
                                                                   lazy=True))

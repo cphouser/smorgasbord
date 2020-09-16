@@ -6,6 +6,31 @@ from pytimeparse import parse as to_seconds
 from . import smorgasbord
 from .models import *
 
+from . import message
+
+
+@app.route('/devices/<device>/messages', methods=['GET'])
+def retrieve_device_messages(device):
+    dev = Devices.query.filter_by(id=device).first()
+    if dev and dev.message:
+        message = dev.message
+        dev.message = ''
+    else:
+        message = json.dumps(dict())
+    db.session.commit()
+    return json.dumps(dict(result=message))
+
+@app.route('/devices/<device>/messages', methods=['PUT'])
+def add_device_message(device):
+    dev = Devices.query.filter_by(id=device).first()
+    msg = json.loads(request.data).get('msg')
+    if dev and msg:
+        dev.msg = msg
+        db.session.commit()
+        return make_response('success', 200)
+    else:
+        return make_response('device {device} or message {msg} invalid', 400)
+
 @app.route('/devices/<device>', methods=['PUT'])
 def update_device_view(device):
     """update in database the active windows of this device"""

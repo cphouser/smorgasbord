@@ -56,7 +56,8 @@ create table if not exists device_windows(
                on delete cascade on update no action);
 
 create table if not exists devices(
-       dev_id text primary key);
+       dev_id text primary key,
+       messages text);
 
 
 -- create trigger if not exists window_exists

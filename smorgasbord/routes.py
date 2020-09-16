@@ -6,6 +6,7 @@ from flask import current_app as app
 from datetime import datetime, timedelta
 
 from . import smorgasbord
+from . import message
 from .models import *
 from .devices import *
 
@@ -280,6 +281,20 @@ def list_tags_tree():
     return json.dumps(dict(tags=tag_list))
 
 
+def tag_dict():
+    def rec_populate(tag, parent_dict):
+        parent_dict[tag.id] = {}
+        children = Tag.query.filter_by(parent=tag.id).order_by(Tag.id)
+        for child in children:
+            rec_populate(child, parent_dict[tag.id])
+
+    root_tags = Tag.query.filter_by(parent=None).order_by(Tag.id)
+    tag_dict = {}
+    for tag in root_tags:
+        rec_populate(tag, tag_dict)
+    return tag_dict
+
+
 @app.route('/recent/')
 def show_recent_links():
     days_back = request.args.get('days', default=30, type=int)
@@ -333,3 +348,26 @@ def show_active():
                            columns=columns,
                            windows=win_tables,
                            subtitle='Links currently opened')
+
+@app.route('/tags/')
+def browse_tags():
+    def recursive_format(tag_dict, nested_summary):
+        for tag_id, children in tag_dict.items():
+            tag_info = tag_summary(tag_id)
+            tag_info['children'] = []
+            if children:
+                recursive_format(children, tag_info['children'])
+            nested_summary += [tag_info]
+    tags = tag_dict()
+    summary = []
+    recursive_format(tags, summary)
+    return render_template('tags.jinja2', title='browse tags',
+                           tags=summary)
+
+
+def tag_summary(tag_id):
+    tag = Tag.query.filter_by(id=tag_id).first()
+    child_count = len(tag.children)
+    link_count = len(tag.links)
+    return dict(id=tag_id, desc=tag.description, child_count=child_count,
+                link_count=link_count)

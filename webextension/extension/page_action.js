@@ -182,6 +182,26 @@ function linkSummary(link_data, tag_data) {
 }
 
 function initPage(server_name, device_id) {
+    function updateBrowser() {
+        function readMessage(message) {
+            function updateWindows(stored_windows) {
+                var new_windows = [];
+                onError(JSON.stringify(message));
+                //if (message.open)
+                //    for (var i = 0; i < message.open.length; i++) {
+                //        var urls = message.open[i].urls;
+                //    }
+                //if (message.change) {}
+                //if (message.close) {}
+            }
+            browser.windows.getAll({windowTypes: ["normal"]})
+                .then(updateWindows).catch(onError);
+        }
+        fetch(server_name + 'devices/' + device_id + '/messages', {method: 'GET'})
+            .then(response => response.json()).then(result => result.result.json())
+            .then(message => readMessage(message));
+    }
+
     function saveLink(link_id, link_url, link_title) {
         document.getElementById('link-title').setAttribute('value', link_title);
         document.getElementById('link-url').innerHTML = link_url;
@@ -268,6 +288,9 @@ function initPage(server_name, device_id) {
             document.getElementById('new-tag-start').
                 addEventListener("click", newTag);
 
+            document.getElementById('update-browser')
+                .addEventListener('click', updateBrowser);
+
             let tab_query = browser.tabs.query({currentWindow: true, active: true});
             tab_query.then(tabFind, onError);
         }).catch(
@@ -285,8 +308,8 @@ function onError(error) {
 }
 
 function initError(error) {
-    disableMenu(document.getElementsByClassName('menu-button'));
     showMenu('server-name');
+    disableMenu(document.getElementsByClassName('menu-button'));
     if (error) onError(error);
 }
 
