@@ -1,8 +1,9 @@
 
 
-$.deselect = function() {
+$.deselect = function(data_link_id) {
     $.each($("input[name='link']:checked"), function() {
-        $(this).prop('checked', false);
+        if (!data_link_id || $(this).attr('data-link-id') == data_link_id)
+            $(this).prop('checked', false);
     });
 };
 
@@ -60,14 +61,6 @@ $.load_links = function(tag_id, order) {
             row.append($('<td class="url"></td>').html(direct));
             row.append($('<td class="tags"></td>').text(JSON.stringify(link.tags)));
             row.append($('<td class="active"></td>').text(JSON.stringify(link.active)));
-            //var title = $('<input type="text" name="title">')
-            //    .attr('value', data.title);
-            //var desc = $('<textarea rows=3 name="desc">')
-            //    .attr('value', data.desc);
-            //form.append(title);
-            //form.append('<button type="submit">Edit Link</button>');
-            //form.append($('<br>'));
-            //form.append(desc);
             table.append(row);
         });
         ret_div.append(table);
@@ -90,7 +83,7 @@ $(function() {
     //tags page
     $('a.tag-links').bind('click', function() {
         var tag_id = $(this).attr('data-link-id');
-        if ($.togg_link_table(tag_id))
+        if ($.togg_link_table(tag_id) && !$('div#'+tag_id+'-link-table').html())
             $.load_links(tag_id, null);
     });
 
@@ -116,7 +109,7 @@ $(function() {
                     tag: null,
                     link_ids: JSON.stringify(selected)
                 }).done(function() {
-                    //$.deselect();
+                    $.deselect(tag_id);
                     //location.reload(true);
                     $('a#bottom-pane-show').click();
                 });

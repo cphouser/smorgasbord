@@ -13,10 +13,6 @@ function initListeners(server_name, device_id) {
                 method: 'PUT',
                 body: JSON.stringify(currentWindows)
             });
-                //.then(response => response.json())
-                //.then(result => {
-                //    console.log('Success:', JSON.stringify(result));
-                //});
         }
 
         var getting = browser.windows.getAll({
@@ -53,24 +49,15 @@ function updateWindows(server_name, dev_id) {
     function readMessage(message) {
         function moveTabs(win_obj, tabs) {
             function moveTab(tab_obj, url, win_id) {
-                console.log('ok2');
-                console.log(tab_obj);
-                console.log(win_id);
                 if (tab_obj.length)
-                    browser.tabs.move(tab_obj.id, {windowId: win_id, index: -1});
+                    browser.tabs.move(tab_obj[0].id, {windowId: win_id, index: -1});
                 else
                     browser.tabs.create({url: url, windowId: win_id});
             }
-            console.log(win_obj);
             for (let tab of tabs) {
-                console.log('ok');
-                console.log(tab);
                 browser.tabs.query({
                     windowId: tab.id, url: tab.url
-                }).then(result => moveTab(result, tab.url, win_obj.id)).catch(error => {
-                    console.log(error);
-                    console.log('ok3');
-                });
+                }).then(result => moveTab(result, tab.url, win_obj.id)).catch(onError);
             }
         }
         function openWindow(tabs) {
@@ -119,5 +106,4 @@ browser.storage.local.get(['server_name', 'device_id']).then(result => {
         browser.storage.local.set({'server_name': server_name, 'device_id': device_id})
             .then(initListeners(server_name, device_id),onError);
     }
-    onError(JSON.stringify(result));
 }).catch(onError);

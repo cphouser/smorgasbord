@@ -28,6 +28,7 @@ def retrieve_device_messages(device):
     dev = Device.query.filter_by(id=device).first()
     if dev and dev.message:
         message = dev.message
+        dev.message = ''
     else:
         message = json.dumps(dict())
     db.session.commit()
@@ -39,6 +40,7 @@ def add_device_message(device):
     msg = request.form.get('message')
     if dev and msg:
         message = Msg(device)
+        #TODO merge the messages
         if dev.message:
             pass
         else:
