@@ -47,6 +47,26 @@ def recent_link_visits():
     result = '\n'.join([str(visit) for visit in recent_visits])
     return json.dumps(dict(link_id=link_id, result=result))
 
+@app.route('/tag/<tag_id>/links')
+def links_by_tag(tag_id):
+    link_list = []
+    tag = Tag.query.filter_by(id=tag_id).first()
+    for link in tag.links:
+        active = {}
+        for wl in WindowLinks.query.filter_by(link_id=link.id):
+            window = Window.query.filter_by(id=wl.win_id).first()
+            for device in window.devices:
+                 dev_entry = active.get(device.id)
+                 if dev_entry is None:
+                     active[device.id] = dev_entry = []
+                 dev_entry.append(window.id)
+
+        other_tags = [tag.id for tag in link.tags if tag.id != tag_id]
+        link_list += [dict(id=link.id, url=link.url, title=link.title,
+                           desc=link.description, tags=other_tags,
+                           active=active)]
+    return json.dumps(dict(result=link_list))
+    
 
 @app.route('/link')
 def find_url():

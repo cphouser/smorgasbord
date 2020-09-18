@@ -12,14 +12,11 @@ function initListeners(server_name, device_id) {
             fetch(server_name+'devices/'+device_id, {
                 method: 'PUT',
                 body: JSON.stringify(currentWindows)
-            })
-                .then(response => response.json())
-                .then(result => {
-                    console.log('Success:', result);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
+            });
+                //.then(response => response.json())
+                //.then(result => {
+                //    console.log('Success:', JSON.stringify(result));
+                //});
         }
 
         var getting = browser.windows.getAll({
@@ -29,6 +26,11 @@ function initListeners(server_name, device_id) {
         getting.then(storeWindows, onError);
     }
 
+    function msgReceiver(message) {
+        if (message == 'update-window')
+            updateWindows(server_name, device_id);
+    }
+    
     function tabRemove(tabId, info) {
         if (!info.isWindowClosing) {
             pageChange();
@@ -43,6 +45,64 @@ function initListeners(server_name, device_id) {
     browser.tabs.onRemoved.addListener(tabRemove);
 
     browser.tabs.onAttached.addListener(pageChange);
+
+    browser.runtime.onMessage.addListener(msgReceiver);
+}
+
+function updateWindows(server_name, dev_id) {
+    function readMessage(message) {
+        function moveTabs(win_obj, tabs) {
+            function moveTab(tab_obj, url, win_id) {
+                console.log('ok2');
+                console.log(tab_obj);
+                console.log(win_id);
+                if (tab_obj.length)
+                    browser.tabs.move(tab_obj.id, {windowId: win_id, index: -1});
+                else
+                    browser.tabs.create({url: url, windowId: win_id});
+            }
+            console.log(win_obj);
+            for (let tab of tabs) {
+                console.log('ok');
+                console.log(tab);
+                browser.tabs.query({
+                    windowId: tab.id, url: tab.url
+                }).then(result => moveTab(result, tab.url, win_obj.id)).catch(error => {
+                    console.log(error);
+                    console.log('ok3');
+                });
+            }
+        }
+        function openWindow(tabs) {
+            var moved_tabs = [];
+            var open_urls = [];
+            for (let tab of tabs) {
+                if (tab.id)
+                    moved_tabs.push(tab);
+                else
+                    open_urls.push(tab.url);
+            }
+            browser.windows.create({
+                url: open_urls
+            }).then(result => moveTabs(result, moved_tabs)).catch(onError);
+        }
+
+        function updateWindows(stored_windows) {
+            var new_windows = [];
+            if (message.p_open)
+                for (var i = 0; i < message.p_open.length; i++) {
+                    var tabs = message.p_open[i].tabs;
+                    openWindow(tabs);
+                }
+            if (message.change) {}
+            if (message.close) {}
+        }
+        browser.windows.getAll({windowTypes: ["normal"]})
+            .then(updateWindows).catch(onError);
+    }
+    fetch(server_name + 'devices/' + dev_id + '/messages', {method: 'GET'})
+        .then(response => response.json()).then(message =>
+                                                readMessage(JSON.parse(message)));
 }
 
 browser.storage.local.get(['server_name', 'device_id']).then(result => {
@@ -57,7 +117,7 @@ browser.storage.local.get(['server_name', 'device_id']).then(result => {
             device_id = DEFAULT_DEVICE_ID;
 
         browser.storage.local.set({'server_name': server_name, 'device_id': device_id})
-            .then(initListeners(server_name, device_id)).catch(onError);
+            .then(initListeners(server_name, device_id),onError);
     }
     onError(JSON.stringify(result));
 }).catch(onError);

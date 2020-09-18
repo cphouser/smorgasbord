@@ -48,6 +48,14 @@ table {
     width: auto;
 }
 
+.active {
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 0;
+    width: auto;
+}
+
 .time {
     width: 11em;
 }

@@ -6,10 +6,11 @@ $.deselect = function() {
     });
 };
 
-$.selected = function() {
+$.selected = function(data_link_id) {
     var selected = [];
     $.each($("input[name='link']:checked"), function() {
-        selected.push($(this).val());
+        if (!data_link_id || $(this).attr('data-link-id') == data_link_id)
+            selected.push($(this).val());
     });
     return selected;
 };
@@ -26,7 +27,105 @@ $.togg_link_pane = function(link_id, mode) {
     }
 };
 
+$.togg_link_table = function(tag_id) {
+    var display_div = $('div#'+tag_id+'-link-table');
+    var tools_div = $('div#'+tag_id+'-msg-tools');
+    if (display_div.attr('style') == 'display:none;') {
+        display_div.attr('style', 'display:block;');
+        tools_div.attr('style', 'display:block;');
+        return true;
+    } else {
+        display_div.attr('style', 'display:none;');
+        tools_div.attr('style', 'display:none;');
+        return false;
+    }
+};
+
+$.load_links = function(tag_id, order) {
+    var ret_div = $('div#'+tag_id+'-link-table');
+    if (!order) order = 'alpha';
+    $.getJSON('/tag/'+tag_id+'/links', {
+        order: order
+    }, function(data) {
+        var table = $('<table></table>');
+        table.attr('class', 'link-table');
+        $.each(data.result, function (_, link) {
+            var row = $('<tr></tr>');
+            var select = $('<input type="checkbox", name="link">');
+            select.attr('value', link.id);
+            select.attr('data-link-id', tag_id);
+            row.append($('<td class="select"></td>').html(select));
+            row.append($('<td class="title"></td>').text(link.title));
+            var direct = $('<a href="'+link.url+'"></a>').text(link.url);
+            row.append($('<td class="url"></td>').html(direct));
+            row.append($('<td class="tags"></td>').text(JSON.stringify(link.tags)));
+            row.append($('<td class="active"></td>').text(JSON.stringify(link.active)));
+            //var title = $('<input type="text" name="title">')
+            //    .attr('value', data.title);
+            //var desc = $('<textarea rows=3 name="desc">')
+            //    .attr('value', data.desc);
+            //form.append(title);
+            //form.append('<button type="submit">Edit Link</button>');
+            //form.append($('<br>'));
+            //form.append(desc);
+            table.append(row);
+        });
+        ret_div.append(table);
+    });
+};
+
 $(function() {
+    //message bar
+    $('a#bottom-pane-show').bind('click', function() {
+        $.getJSON('/devices/messages', response => {
+            var message_div = $('<div></div>');
+            $.each(response.result, (dev_id, message) => {
+                message_div.append($('<h3></h3>').text(dev_id));
+                message_div.append($('<pre></pre>').text(message));
+            });
+            $('div#bottom-pane-content').html(message_div);
+        });
+    });
+
+    //tags page
+    $('a.tag-links').bind('click', function() {
+        var tag_id = $(this).attr('data-link-id');
+        if ($.togg_link_table(tag_id))
+            $.load_links(tag_id, null);
+    });
+
+    $('a.mo-sel-new').bind('click', function() {
+        var tag_id = $(this).attr('data-link-id');
+        var selected = $.selected(tag_id);
+        if (selected.length) {
+            var dev_select = $('select[data-link-id="'+tag_id+'"]').filter('.device-select');
+            $.getJSON('/devices/', result => {
+                $.each(result.devices, (_, dev_id) => {
+                    dev_select.append($('<option></option>')
+                                      .text(dev_id).attr('value', dev_id));
+                });
+            });
+            var msg_btn = $('button[data-link-id="'+tag_id+'"]').filter('.make-message');
+            msg_btn.attr('disabled', false);
+            msg_btn.bind('click', function() {
+                var device = dev_select.children('option:selected').val();
+                selected = $.selected(tag_id);
+                $.post('/devices/'+device+'/messages', {
+                    message: 'open',
+                    win_id: null,
+                    tag: null,
+                    link_ids: JSON.stringify(selected)
+                }).done(function() {
+                    //$.deselect();
+                    //location.reload(true);
+                    $('a#bottom-pane-show').click();
+                });
+            });
+            dev_select.attr('disabled', false);
+        }
+    });
+
+    //recent and active
     $('a.count').bind('click', function() {
         var link_id = $(this).attr('data-link-id');
         if ($.togg_link_pane(link_id, 'visits'))

@@ -17,14 +17,33 @@
         <a href="/dashapp/" class="link">timeline graph</a>
         <a href="/recent/" class="link">recent visits</a>
         <a href="/active/" class="link">active windows</a>
+        <a href="/tags/" class="link">tags</a>
         <h4>{{ subtitle }}</h4>
       </div>
       <div class="heading-block">
         {% block toolbox %}{% endblock %}
       </div>
     </div>
+
     <div id="container">
       {% block content %}{% endblock %}
+    </div>
+
+    <div id="messages" class="bottom-pane">
+      <a id="bottom-pane-show" href="#" style="display:inline;text-align:right;"
+         onclick="document.getElementById('bottom-pane-content').style.display = 'block';
+         document.getElementById('bottom-pane-show').style.display = 'none';
+         document.getElementById('bottom-pane-hide').style.display = 'inline';">
+         show messages
+      </a>
+      <a id="bottom-pane-hide" href="#" style="display:none;text-align:right;"
+         onclick="document.getElementById('bottom-pane-content').style.display = 'none';
+         document.getElementById('bottom-pane-show').style.display = 'inline';
+         document.getElementById('bottom-pane-hide').style.display = 'none';">
+         hide messages
+      </a>
+      <div id="bottom-pane-content" style="display:none;">
+      </div>
     </div>
     <script type=text/javascript src="{{ url_for('static', filename='dist/js/jquery.js') }}"></script>
     <script type=text/javascript src="{{ url_for('static', filename='dist/js/main.js') }}"></script>

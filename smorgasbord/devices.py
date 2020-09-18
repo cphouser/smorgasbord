@@ -6,26 +6,48 @@ from pytimeparse import parse as to_seconds
 from . import smorgasbord
 from .models import *
 
-from . import message
+from .message import *
 
+
+@app.route('/devices/', methods=['GET'])
+def retrieve_device_list():
+    devices = [dev.id for dev in Device.query]
+    return json.dumps(dict(devices=devices))
+
+@app.route('/devices/messages', methods=['GET'])
+def retrieve_all_messages():
+    messages = {}
+    indent = 0
+    for dev in Device.query:
+        if dev.message:
+            messages[dev.id] = json.dumps(json.loads(dev.message), indent=2)
+    return json.dumps(dict(result=messages))
 
 @app.route('/devices/<device>/messages', methods=['GET'])
 def retrieve_device_messages(device):
-    dev = Devices.query.filter_by(id=device).first()
+    dev = Device.query.filter_by(id=device).first()
     if dev and dev.message:
         message = dev.message
-        dev.message = ''
     else:
         message = json.dumps(dict())
     db.session.commit()
-    return json.dumps(dict(result=message))
+    return json.dumps(message)
 
-@app.route('/devices/<device>/messages', methods=['PUT'])
+@app.route('/devices/<device>/messages', methods=['POST'])
 def add_device_message(device):
-    dev = Devices.query.filter_by(id=device).first()
-    msg = json.loads(request.data).get('msg')
+    dev = Device.query.filter_by(id=device).first()
+    msg = request.form.get('message')
     if dev and msg:
-        dev.msg = msg
+        message = Msg(device)
+        if dev.message:
+            pass
+        else:
+            pass
+        if msg == 'open':
+            tag = request.form.get('tag')
+            link_ids = json.loads(request.form.get('link_ids'))
+            message.openmove_new_win(link_ids, tag)
+        dev.message = str(message)
         db.session.commit()
         return make_response('success', 200)
     else:
@@ -102,10 +124,15 @@ def remove_windowlink(win_link):
     """
     #print(win_link.duration, to_seconds(win_link.duration))
     if Link.query.filter_by(id=win_link.link_id):
-        visit = Visit(link_id=win_link.link_id, time=win_link.time,
-                      duration=(win_link.duration
-                                if to_seconds(win_link.duration) else None))
-        db.session.add(visit)
+        duplicate = Visit.query.filter_by(link_id=win_link.link_id, time=win_link.time)
+        if duplicate:
+            if to_seconds(win_link.duration):
+                duplicate.duration = win_link.duration
+        else:
+            visit = Visit(link_id=win_link.link_id, time=win_link.time,
+                        duration=(win_link.duration
+                                    if to_seconds(win_link.duration) else None))
+            db.session.add(visit)
     db.session.delete(win_link)
     db.session.commit()
 

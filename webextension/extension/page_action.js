@@ -183,23 +183,7 @@ function linkSummary(link_data, tag_data) {
 
 function initPage(server_name, device_id) {
     function updateBrowser() {
-        function readMessage(message) {
-            function updateWindows(stored_windows) {
-                var new_windows = [];
-                onError(JSON.stringify(message));
-                //if (message.open)
-                //    for (var i = 0; i < message.open.length; i++) {
-                //        var urls = message.open[i].urls;
-                //    }
-                //if (message.change) {}
-                //if (message.close) {}
-            }
-            browser.windows.getAll({windowTypes: ["normal"]})
-                .then(updateWindows).catch(onError);
-        }
-        fetch(server_name + 'devices/' + device_id + '/messages', {method: 'GET'})
-            .then(response => response.json()).then(result => result.result.json())
-            .then(message => readMessage(message));
+        browser.runtime.sendMessage('update-window');
     }
 
     function saveLink(link_id, link_url, link_title) {
@@ -301,6 +285,7 @@ function initPage(server_name, device_id) {
 }
 
 function onError(error) {
+    console.log(error);
     var err_blk = document.createElement('div');
     err_blk.className = 'error';
     err_blk.innerHTML = error;
