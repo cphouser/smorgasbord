@@ -1,0 +1,24 @@
+
+<div class="toolbox" id="bulk-edit" style="display:none">
+  <button type="button" class="bulk-opt-sel" id="load-tag-add">Add Tags</button>
+  <button type="button" class="bulk-opt-sel" id="load-tag-remove">Remove Tags</button>
+  <button type="button" id="remove-links">Delete Selected Links</button>
+
+  <div id="bulk-option">
+    <div class="bulk-edit-pane" id="tag-remove" style="display:none">
+      <form id="form-tag-remove">
+        <select id="sel-tag-remove"></select>
+      </form>
+    </div>
+
+    <div class="bulk-edit-pane" id="tag-add" style="display:none">
+      <form id="form-tag-add">
+        <select id="sel-tag-add"></select>
+        <input id="new-tag" disabled>
+      </form>
+    </div>
+
+    <button id="bulk-option-submit" type="button">Submit</button>
+
+  </div>
+</div>

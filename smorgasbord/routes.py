@@ -23,6 +23,10 @@ def awake():
                        'version': '0.1',
                        'time': str(datetime.now())}), 200
 
+@app.route('/form/link_edit')
+def link_form():
+    return render_template('forms/link_edit.html')
+
 @app.route('/recent/visits')
 def recent_link_visits():
     """retrieve dates of all visits to a link in the specified days.
@@ -155,6 +159,11 @@ def get_link_data(link_id):
                            match=link.match, parent=link.parent))
 
 
+@app.route('/link/<link_id>', methods=['POST'])
+def save_link_data(link_id):
+    print(request.form)
+    return make_response('success', 200)
+
 @app.route('/link/<link_id>', methods=['DELETE'])
 def remove_link(link_id):
     """delete the specified link_id from the database.
@@ -187,16 +196,17 @@ def add_tag(tag_id):
     if not tag_id == tag_id.strip().lower().replace(' ', '_'):
         return make_response('tag id must be lowercase with no spaces', 400);
     tag = Tag(id=tag_id)
-    data = json.loads(request.data)
-    parent_id = data.get('parent')
-    if parent_id:
-        if not Tag.query.filter_by(id=parent_id).first():
-            return make_response('parent tag id is not valid', 400);
-        tag.parent = parent_id
+    if request.data:
+        data = json.loads(request.data)
+        parent_id = data.get('parent')
+        if parent_id:
+            if not Tag.query.filter_by(id=parent_id).first():
+                return make_response('parent tag id is not valid', 400);
+            tag.parent = parent_id
 
-    tag_desc = data.get('desc')
-    if tag_desc:
-        tag.description = tag_desc
+        tag_desc = data.get('desc')
+        if tag_desc:
+            tag.description = tag_desc
 
     db.session.add(tag)
     db.session.commit()
@@ -221,6 +231,7 @@ def add_tag_links():
     """
     link_ids = json.loads(request.form.get('link_ids'))
     tag_id = request.form.get('tag')
+    print('*', link_ids, tag_id)
     tag = Tag.query.filter_by(id=tag_id).first()
     for link_id in link_ids:
         link = Link.query.filter_by(id=link_id).first()
@@ -344,7 +355,7 @@ def show_recent_links():
 @app.route('/active/')
 def show_active():
     windows = Window.query.all()
-    print(windows)
+    #print(windows)
     win_tables = {}
     for window in windows:
         links = window.links

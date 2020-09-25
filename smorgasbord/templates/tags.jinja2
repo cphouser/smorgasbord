@@ -1,0 +1,67 @@
+{% extends "layout.jinja2" %}
+
+{% block toolbox %}
+  <div class="toolbox" id="bulk-edit" style="display:none">
+    <button type="button" id="load-tag-edit">Edit Tags</button>
+    <button type="button" id="remove-links">Delete Selected Links</button>
+    <div id="bulk-tag-edit" style="display:none">
+      <form id="tag-remove">
+        <button id="btn-tag-remove" type="button">Remove Tag</button>
+        <select id="sel-tag-remove"></select>
+      </form>
+      <form id="tag-add">
+        <button id="btn-tag-add" type="button">Add Tag</button>
+        <select id="sel-tag-add"></select>
+        <input id="new-tag" disabled>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% macro tag_item(tag_data) -%}
+  <li class="tag-list">
+    <a data-link-id="{{ tag_data.id }}" href="#">
+      <strong>{{ tag_data.id }}</strong>
+    </a>&nbsp;
+    <a data-link-id="{{ tag_data.id }}" class="tag-links" href="#">
+      Links: {{ tag_data.link_count }}
+    </a>&nbsp;
+    Child Tags: {{ tag_data.child_count }}
+    {% if tag_data.desc %}
+      <p class="description">{{ tag_data.desc }}</p>
+    {% endif %}
+    <div id="{{ tag_data.id }}-msg-tools" style="display:none;">
+      <a data-link-id="{{ tag_data.id }}" class="mo-all-new" href="#">move or open all to a new window</a>&nbsp;
+      <a data-link-id="{{ tag_data.id }}" class="mo-sel-new" href="#">move or open selected to new window</a>
+      <div id="msg-select">
+        <select class="device-select" data-link-id="{{ tag_data.id }}" disabled>
+        </select>
+        <select class="window-select" data-link-id="{{ tag_data.id }}" disabled>
+        </select>
+        <button class="make-message" data-link-id="{{ tag_data.id }}" disabled>
+          add to message
+        </button>
+      </div>
+    </div>
+    <div id="{{ tag_data.id }}-link-table" style="display:none;"></div>
+    {% if tag_data.children|length %}
+      <ul>
+        {% for child in tag_data.children %}
+          {{ tag_item(child) }}
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </li>
+{%- endmacro %}
+
+
+{% block content %}
+  <div>
+    <ul>
+      {% for tag_data in tags %}
+        {{ tag_item(tag_data) }}
+      {% endfor %}
+    </ul>
+  </div>
+
+{% endblock %}
