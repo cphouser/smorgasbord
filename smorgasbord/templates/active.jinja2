@@ -9,7 +9,13 @@
   <div class="card">
     {% for win_id, window in windows.items() %}
       <b>Window:</b> {{ win_id }} ({{ window.count }} tabs)
-      <b>Devices:</b> {{ window.devices }} 
+      <b>Devices:</b>
+      {% for device in window.devices %}
+        {{ device }}
+        <a href=# class="window-close" data-win-id="{{ win_id }}" data-dev-id="{{ device }}">[close]</a>
+        <a href=# class="selected-close" data-win-id="{{ win_id }}" data-dev-id="{{ device }}">[close selected]</a>
+        {% if not loop.last %}, {% endif %} 
+      {% endfor %}
       <table>
         <tr>
           {% for name in columns %}
@@ -19,7 +25,7 @@
         {% for link in window.links %}
           <tr>
             <td class="select">
-              <input type="checkbox", name="link", value="{{ link.id }}">
+              <input type="checkbox" name="link" value="{{ link.id }}" data-link-id="{{ win_id }}">
             </td>
             <td class="time">
               {{ link.time }}

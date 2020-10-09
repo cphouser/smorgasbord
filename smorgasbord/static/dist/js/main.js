@@ -75,6 +75,43 @@ $(function() {
             $.load_links(tag_id, null);
     });
 
+    $('a.mo-sel-sel').bind('click', function() {
+        var tag_id = $(this).attr('data-link-id');
+        var selected = $.selected(tag_id);
+        if (selected.length) {
+            var win_select = $('select[data-link-id="'+tag_id+'"]').filter('.window-select');
+            $.getJSON('/windows/', result => {
+                $.each(result.windows, (_, win_id) => {
+                    win_select.append($('<option></option>')
+                                      .text(win_id).attr('value', win_id));
+                });
+            });
+
+            var msg_btn = $('button[data-link-id="'+tag_id+'"]').filter('.make-message');
+            msg_btn.attr('disabled', false);
+            msg_btn.bind('click', function() {
+                var window = win_select.children('option:selected').val();
+                selected = $.selected(tag_id);
+
+                $.getJSON('/devices/', {win_id: window}, result => {
+                    $.each(result.devices, (_, dev_id) => {
+                        $.post('/devices/'+dev_id+'/messages', {
+                            message: 'change',
+                            win_id: window,
+                            tag: null,
+                            link_ids: JSON.stringify(selected)
+                        });
+                    });
+                }).done(function() {
+                    $.deselect(tag_id);
+                    //location.reload(true);
+                    $('a#bottom-pane-show').click();
+                });
+            });
+            win_select.attr('disabled', false);
+        }
+    });
+
     $('a.mo-sel-new').bind('click', function() {
         var tag_id = $(this).attr('data-link-id');
         var selected = $.selected(tag_id);
@@ -107,6 +144,34 @@ $(function() {
     });
 
     //recent and active
+    $('a.window-close').bind('click', function() {
+        var win_id = $(this).attr('data-win-id');
+        var dev_id = $(this).attr('data-dev-id');
+        $.post('/devices/'+dev_id+'/messages', {
+            message: 'close',
+            win_id: win_id,
+            link_ids: null
+        }).done(function() {
+            //location.reload(true);
+            $('a#bottom-pane-show').click();
+        });
+    });
+
+    $('a.selected-close').bind('click', function() {
+        var win_id = $(this).attr('data-win-id');
+        var dev_id = $(this).attr('data-dev-id');
+        var selected = $.selected(win_id);
+        if (selected.length)
+            $.post('/devices/'+dev_id+'/messages', {
+                message: 'close',
+                win_id: win_id,
+                link_ids: JSON.stringify(selected)
+            }).done(function() {
+                //location.reload(true);
+                $('a#bottom-pane-show').click();
+            });
+    });
+
     $("input[name='link']").change(function() {
         var selected = $.selected();
         if (selected.length) {

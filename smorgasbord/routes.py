@@ -359,7 +359,8 @@ def show_active():
     win_tables = {}
     for window in windows:
         links = window.links
-        devices = ', '.join([device.id for device in window.devices])
+        #devices = ', '.join([device.id for device in window.devices])
+        devices = [device.id for device in window.devices]
         link_list = []
         for link in links:
             linkitem = Link.query.filter_by(id=link.link_id).first()

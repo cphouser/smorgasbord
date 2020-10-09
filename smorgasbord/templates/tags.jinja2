@@ -1,21 +1,7 @@
 {% extends "layout.jinja2" %}
 
 {% block toolbox %}
-  <div class="toolbox" id="bulk-edit" style="display:none">
-    <button type="button" id="load-tag-edit">Edit Tags</button>
-    <button type="button" id="remove-links">Delete Selected Links</button>
-    <div id="bulk-tag-edit" style="display:none">
-      <form id="tag-remove">
-        <button id="btn-tag-remove" type="button">Remove Tag</button>
-        <select id="sel-tag-remove"></select>
-      </form>
-      <form id="tag-add">
-        <button id="btn-tag-add" type="button">Add Tag</button>
-        <select id="sel-tag-add"></select>
-        <input id="new-tag" disabled>
-      </form>
-    </div>
-  </div>
+  {% include "link_tb.jinja2" %}
 {% endblock %}
 
 {% macro tag_item(tag_data) -%}
@@ -31,8 +17,9 @@
       <p class="description">{{ tag_data.desc }}</p>
     {% endif %}
     <div id="{{ tag_data.id }}-msg-tools" style="display:none;">
-      <a data-link-id="{{ tag_data.id }}" class="mo-all-new" href="#">move or open all to a new window</a>&nbsp;
-      <a data-link-id="{{ tag_data.id }}" class="mo-sel-new" href="#">move or open selected to new window</a>
+      {# <a data-link-id="{{ tag_data.id }}" class="mo-all-new" href="#">move or open all to a new window</a>&nbsp; #}
+      <a data-link-id="{{ tag_data.id }}" class="mo-sel-new" href="#">move or open selected to new window</a>&nbsp;
+      <a data-link-id="{{ tag_data.id }}" class="mo-sel-sel" href="#">move or open selected to a current window</a>&nbsp;
       <div id="msg-select">
         <select class="device-select" data-link-id="{{ tag_data.id }}" disabled>
         </select>

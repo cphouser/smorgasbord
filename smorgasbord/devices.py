@@ -9,9 +9,20 @@ from .models import *
 from .message import *
 
 
+@app.route('/windows/', methods=['GET'])
+def retrieve_window_list():
+    windows = [window.id for window in Window.query]
+    return json.dumps(dict(windows=windows))
+
 @app.route('/devices/', methods=['GET'])
 def retrieve_device_list():
-    devices = [dev.id for dev in Device.query]
+    win_id = request.args.get('win_id', type=str)
+    if win_id:
+        win = Window.query.filter_by(id=win_id).first()
+        devices = [dev.id for dev in Device.query.filter(Device.windows.contains(win))]
+    else:
+        devices = [dev.id for dev in Device.query]
+
     return json.dumps(dict(devices=devices))
 
 @app.route('/devices/messages', methods=['GET'])
@@ -24,7 +35,7 @@ def retrieve_all_messages():
     return json.dumps(dict(result=messages))
 
 @app.route('/devices/<device>/messages', methods=['GET'])
-def retrieve_device_messages(device):
+def retrieve_device_message(device):
     dev = Device.query.filter_by(id=device).first()
     if dev and dev.message:
         message = dev.message
@@ -39,16 +50,24 @@ def add_device_message(device):
     dev = Device.query.filter_by(id=device).first()
     msg = request.form.get('message')
     if dev and msg:
+        tag = request.form.get('tag')
+        link_id_obj = request.form.get('link_ids')
+        link_ids = json.loads(link_id_obj) if link_id_obj else None
         message = Msg(device)
+        message.clear()
         #TODO merge the messages
         if dev.message:
             pass
         else:
             pass
         if msg == 'open':
-            tag = request.form.get('tag')
-            link_ids = json.loads(request.form.get('link_ids'))
             message.openmove_new_win(link_ids, tag)
+        elif msg == 'change':
+            win_id = request.form.get('win_id')
+            message.openmove_cur_win(link_ids, win_id, tag)
+        elif msg == 'close':
+            win_id = request.form.get('win_id')
+            message.close_win(link_ids, win_id)
         dev.message = str(message)
         db.session.commit()
         return make_response('success', 200)
@@ -103,6 +122,7 @@ def add_windowlink(win_id, link_id, title, url, last_access):
     time_str = last_access.strftime('%Y-%m-%d %H:%M:%S')
     wl = WindowLinks(win_id=win_id, link_id=link_id, time=time_str, url=url,
                      title=title, duration='0:00:00:00')
+    
     db.session.add(wl)
     db.session.commit()
 
@@ -132,7 +152,7 @@ def remove_windowlink(win_link):
                 duplicate.duration = win_link.duration
         else:
             visit = Visit(link_id=win_link.link_id, time=win_link.time,
-                        duration=(win_link.duration
+                          duration=(win_link.duration
                                     if to_seconds(win_link.duration) else None))
             db.session.add(visit)
     db.session.delete(win_link)
@@ -151,7 +171,7 @@ def update_window(id, bid, device, b_tabs):
     for window_link in db_tabs:
         if window_link.link_id in b_tabs:
             #print("update", window_link.link_id)
-            update_windowlink(window_link, b_tabs[window_link.link_id][2]) 
+            update_windowlink(window_link, b_tabs[window_link.link_id][2])
             del b_tabs[window_link.link_id]
         else:
             #print("remove", window_link.link_id)

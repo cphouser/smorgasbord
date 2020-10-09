@@ -24,6 +24,13 @@
     width:100%;
 }
 
+#messages {
+    position: fixed;
+    bottom: 0px;
+    background-color: #fafafa;
+    width: 100%
+}
+
 .subtitle {
     margin: 0;
 }
