@@ -144,9 +144,11 @@ def remove_windowlink(win_link):
     """
     removes link from window_links and adds corresponding entry to visits.
     """
+
     #print(win_link.duration, to_seconds(win_link.duration))
     if Link.query.filter_by(id=win_link.link_id):
-        duplicate = Visit.query.filter_by(link_id=win_link.link_id, time=win_link.time)
+        #print('****')
+        duplicate = Visit.query.filter_by(link_id=win_link.link_id, time=win_link.time).first()
         if duplicate:
             if to_seconds(win_link.duration):
                 duplicate.duration = win_link.duration
@@ -155,6 +157,7 @@ def remove_windowlink(win_link):
                           duration=(win_link.duration
                                     if to_seconds(win_link.duration) else None))
             db.session.add(visit)
+            db.session.commit()
     db.session.delete(win_link)
     db.session.commit()
 
@@ -169,15 +172,14 @@ def update_window(id, bid, device, b_tabs):
         #db.engine.execute(update)
     db_tabs = WindowLinks.query.filter_by(win_id=id)
     for window_link in db_tabs:
-        if window_link.link_id in b_tabs:
-            #print("update", window_link.link_id)
+        #check if window_link still exists (multiple instances of this function running?)
+        if window_link and window_link.link_id in b_tabs:
             update_windowlink(window_link, b_tabs[window_link.link_id][2])
             del b_tabs[window_link.link_id]
-        else:
-            #print("remove", window_link.link_id)
+        #check if window_link still exists (multiple instances of this function running?)
+        elif window_link:
             remove_windowlink(window_link)
     for tab, (title, url, last_access) in b_tabs.items():
-        #print('add', tab)
         add_windowlink(id, tab, title, url, last_access)
 
 
@@ -248,7 +250,10 @@ def sort_windows(device, windows):
                 comparison[db_window.id] = link_difference(list(tabs.keys()),
                                                            win_links)
         if len(comparison):
+            #print('--', comparison)
+            #print('--', window_update)
             best_match = min(comparison, key=comparison.get)
+            #print('--', best_match)
             window_update['update'].append((best_match, win))
             window_update['add'].remove(win)
             window_update['remove'].remove(best_match)
@@ -287,14 +292,5 @@ def sort_windows(device, windows):
             else:
                 del comparisons[best_window]
 
-    print(*window_update.items(), sep='\n')
+    #print(*window_update.items(), sep='\n')
     return window_update
-
-
-#def db_import():
-#    return render_template(
-#        'import.jinja2',
-#        title='smorgasbord',
-#        description='layout import',
-#        template='home-template',
-#    )

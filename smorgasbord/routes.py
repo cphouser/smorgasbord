@@ -9,6 +9,7 @@ from . import smorgasbord
 from . import message
 from .models import *
 from .devices import *
+import os.path
 
 @app.route('/')
 def home():

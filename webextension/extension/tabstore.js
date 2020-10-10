@@ -14,17 +14,24 @@ function updateWindows(server_name, dev_id) {
          *
          * @param {window} win_obj A Window object to move the tabs to.
         */
-        function moveTabs(win_obj, tabs) {
-            function moveTab(tab_obj, url, win_id) {
+
+        function queryTabs(t_id, t_url) {
+            var url = new URL(t_url);
+            url.hash = '';
+            return browser.tabs.query({windowId: t_id, url: url.href});
+        }
+
+        function moveTabs(win_id, tabs) {
+            function moveTab(tab_obj, url, wid) {
                 if (tab_obj.length)
-                    browser.tabs.move(tab_obj[0].id, {windowId: win_id, index: -1});
+                    browser.tabs.move(tab_obj[0].id, {windowId: wid, index: -1});
                 else
-                    console.log(url + ' could not be found on window ' + win_id);
+                    console.log(url + ' could not be found on window');
             }
             for (let tab of tabs)
-                browser.tabs.query({
-                    windowId: tab.id, url: tab.url
-                }).then(result => moveTab(result, tab.url, win_obj.id)).catch(onError);
+                queryTabs(tab.id, tab.url).then(
+                    result => moveTab(result, tab.url, win_id)
+                ).catch(onError);
         }
 
         function openWindow(tabs) {
@@ -37,7 +44,7 @@ function updateWindows(server_name, dev_id) {
                     open_urls.push(tab.url);
             browser.windows.create({
                 url: open_urls
-            }).then(result => moveTabs(result, moved_tabs)).catch(onError);
+            }).then(result => moveTabs(result.id, moved_tabs)).catch(onError);
         }
 
         function changeWindow(window_id, tabs) {
@@ -48,10 +55,9 @@ function updateWindows(server_name, dev_id) {
                     moved_tabs.push(tab);
                 else
                     open_urls.push(tab.url);
-            console.log(open_urls);
             open_urls.forEach(url => browser.tabs.create({url: url,
                                                           windowId: window_id}));
-            moveTabs(window, moved_tabs);
+            moveTabs(window_id, moved_tabs);
         }
 
         function closeWindow(window_id) {
@@ -64,9 +70,7 @@ function updateWindows(server_name, dev_id) {
                     query_res.forEach(tab => browser.tabs.remove(tab.id));
             }
             for (let tab of tabs)
-                browser.tabs.query({
-                    windowId: window_id, url: tab.url
-                }).then(closeTab).catch(onError);
+                queryTabs(window_id, tab.url).then(closeTab).catch(onError);
         }
 
         function updateWindows(stored_windows) {
@@ -96,7 +100,6 @@ function updateWindows(server_name, dev_id) {
                         closeTabs(win_close.bid, tabs);
                 }
         }
-
         browser.windows.getAll({windowTypes: ["normal"]})
             .then(updateWindows).catch(onError);
     }
@@ -106,8 +109,8 @@ function updateWindows(server_name, dev_id) {
 }
 
 function initListeners(server_name, device_id) {
-    function pageChange(requestDetails) {
-        function storeWindows(currentWindows) {
+    function storeWindows() {
+        function sendWindows(currentWindows) {
             fetch(server_name+'devices/'+device_id, {
                 method: 'PUT',
                 body: JSON.stringify(currentWindows)
@@ -118,7 +121,7 @@ function initListeners(server_name, device_id) {
             populate: true,
             windowTypes: ["normal"]
         });
-        getting.then(storeWindows, onError);
+        getting.then(sendWindows, onError);
     }
 
     function msgReceiver(message) {
@@ -129,6 +132,13 @@ function initListeners(server_name, device_id) {
     function tabRemove(tabId, info) {
         if (!info.isWindowClosing)
             pageChange();
+    }
+
+    var delay;
+
+    function pageChange() {
+        window.clearTimeout(delay);
+        delay = window.setTimeout(storeWindows, 2000);
     }
 
     browser.webRequest.onCompleted.addListener(pageChange, {urls: ["<all_urls>"],
